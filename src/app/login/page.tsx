@@ -28,54 +28,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-sm border border-gray-100">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Reframe Concepts</h1>
-          <p className="mt-1 text-sm text-gray-500">Document Review Platform</p>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--background)' }}>
+      <div className="w-full max-w-sm">
+        <div className="flex justify-center mb-8">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--blue)' }}>
+            <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
+              <rect x="1" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9"/>
+              <rect x="8" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
+              <rect x="1" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
+              <rect x="8" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.3"/>
+            </svg>
+          </div>
         </div>
-
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
+        <div className="text-center mb-8">
+          <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Reframe Concepts</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Document Review Platform</p>
+        </div>
+        <div className="rounded-2xl p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label htmlFor="email" className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Email</label>
+              <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} className="dark-input w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all" />
+            </div>
+            <div>
+              <label htmlFor="password" className="block text-xs font-medium mb-2 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Password</label>
+              <input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className="dark-input w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all" />
+            </div>
+            {error && (
+              <p className="text-sm px-4 py-2.5 rounded-lg" style={{ color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)' }}>{error}</p>
+            )}
+            <button type="submit" disabled={loading} className="login-btn w-full py-2.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50">
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

@@ -44,6 +44,7 @@ export interface Project {
   created_by: string
   created_at: string
   updated_at: string
+  image_url: string | null
 }
 
 export interface Document {

@@ -24,20 +24,17 @@ export default async function AdminUsersPage() {
     .order('name')
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
+      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm text-gray-400 hover:text-gray-700">
-              Projects
-            </Link>
-            <span className="text-gray-300">/</span>
-            <span className="text-sm font-medium text-gray-900">Users</span>
+            <Link href="/dashboard" className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>Projects</Link>
+            <span style={{ color: 'var(--border)' }}>/</span>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Users</span>
           </div>
-          <span className="text-sm text-gray-500">{user.email}</span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{user.email}</span>
         </div>
       </header>
-
       <main className="max-w-6xl mx-auto px-6 py-10">
         <AdminUsersClient projects={projects ?? []} currentUserId={user.id} />
       </main>

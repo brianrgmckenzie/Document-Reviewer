@@ -1,26 +1,133 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d0f14;
+  --surface: #151820;
+  --surface-raised: #1c2030;
+  --border: #252a38;
+  --border-subtle: #1e2335;
+  --text-primary: #f0f2f8;
+  --text-secondary: #8891aa;
+  --text-muted: #545d78;
+  --blue: #3b82f6;
+  --blue-hover: #2563eb;
+  --blue-dim: rgba(59,130,246,0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+::selection {
+  background: rgba(59,130,246,0.3);
+  color: #fff;
+}
+
+/* Dark inputs */
+.dark-input {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.dark-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-dim);
+}
+.dark-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Login button */
+.login-btn {
+  background: var(--blue);
+  color: white;
+}
+.login-btn:hover:not(:disabled) {
+  background: var(--blue-hover);
+}
+
+/* Project cards */
+.project-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.project-card:hover {
+  background: var(--surface-raised);
+  border-color: var(--blue);
+}
+
+/* Cards */
+.dark-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* Primary button */
+.dark-btn-primary {
+  background: var(--blue);
+  color: white;
+}
+.dark-btn-primary:hover:not(:disabled) {
+  background: var(--blue-hover);
+}
+
+/* Outline button */
+.dark-btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.dark-btn-outline:hover:not(:disabled) {
+  background: var(--surface-raised);
+  border-color: var(--text-muted);
+}
+
+/* Select */
+.dark-select {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.dark-select:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-dim);
+  outline: none;
+}
+
+/* Modal */
+.dark-modal {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+}
+
+/* Document card */
+.doc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, background 0.15s;
+}
+.doc-card:hover {
+  background: var(--surface-raised);
+  border-color: var(--blue);
+}
+.doc-card-superseded {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  opacity: 0.55;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }

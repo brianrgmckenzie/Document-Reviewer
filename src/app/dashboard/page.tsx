@@ -30,7 +30,6 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
     projects = data ?? []
   } else {
-    // project_admin: only see assigned projects
     const { data: memberships } = await admin
       .from('project_members')
       .select('project_id')
@@ -49,21 +48,31 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
+      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">Reframe Concepts</h1>
-            <p className="text-xs text-gray-500">Document Review Platform</p>
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--blue)' }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="1" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9"/>
+                <rect x="8" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
+                <rect x="1" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
+                <rect x="8" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.3"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Reframe Concepts</p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Document Review</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-5">
             {isSuperAdmin && (
-              <Link href="/admin/users" className="text-sm text-gray-500 hover:text-gray-900">
+              <Link href="/admin/users" className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
                 Users
               </Link>
             )}
-            <span className="text-sm text-gray-500">{user.email}</span>
-            <Link href="/api/auth/signout" className="text-sm text-gray-500 hover:text-gray-900">
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{user.email}</span>
+            <Link href="/api/auth/signout" className="text-sm transition-colors" style={{ color: 'var(--text-secondary)' }}>
               Sign out
             </Link>
           </div>
@@ -73,9 +82,9 @@ export default async function DashboardPage() {
       <main className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-semibold text-gray-900">Projects</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {projects.length} active client project{projects.length !== 1 ? 's' : ''}
+            <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Projects</h2>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+              {projects.length} active client engagement{projects.length !== 1 ? 's' : ''}
             </p>
           </div>
           {isSuperAdmin && <NewProjectButton />}
@@ -84,36 +93,40 @@ export default async function DashboardPage() {
         {projects.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {projects.map((project: Project) => (
-              <Link
-                key={project.id}
-                href={`/projects/${project.slug}`}
-                className="block bg-white rounded-xl border border-gray-200 p-6 hover:border-gray-400 hover:shadow-sm transition-all"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <Link key={project.id} href={`/projects/${project.slug}`} className="project-card block rounded-xl p-6 transition-all">
+                <div className="flex items-start justify-between mb-4">
+                  <span className="text-xs font-medium uppercase tracking-widest" style={{ color: 'var(--blue)' }}>
                     {project.project_type ?? 'Client'}
                   </span>
+                  {project.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={project.image_url} alt="" className="w-10 h-10 rounded-lg object-cover" style={{ border: '1px solid var(--border)' }} />
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: 'var(--text-muted)', opacity: 0.5 }}>
+                      <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{project.name}</h3>
-                <p className="text-sm text-gray-500">{project.client_name}</p>
+                <h3 className="font-semibold mb-1 text-base" style={{ color: 'var(--text-primary)' }}>{project.name}</h3>
+                <p className="text-sm mb-3" style={{ color: 'var(--text-secondary)' }}>{project.client_name}</p>
                 {project.description && (
-                  <p className="text-sm text-gray-400 mt-2 line-clamp-2">{project.description}</p>
+                  <p className="text-sm line-clamp-2 mb-3" style={{ color: 'var(--text-muted)' }}>{project.description}</p>
                 )}
-                <p className="text-xs text-gray-400 mt-4">
-                  Created {new Date(project.created_at).toLocaleDateString()}
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {new Date(project.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
                 </p>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
+          <div className="text-center py-20 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
             {isSuperAdmin ? (
               <>
-                <p className="text-gray-500 mb-4">No projects yet.</p>
+                <p className="mb-5" style={{ color: 'var(--text-secondary)' }}>No projects yet.</p>
                 <NewProjectButton />
               </>
             ) : (
-              <p className="text-gray-400">No projects assigned to your account yet.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No projects assigned to your account yet.</p>
             )}
           </div>
         )}
