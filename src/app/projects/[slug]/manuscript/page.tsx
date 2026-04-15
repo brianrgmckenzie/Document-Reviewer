@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import ManuscriptClient from '@/components/ManuscriptClient'
@@ -9,8 +10,22 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const admin = createAdminClient()
+  const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
+  const role = roleData?.role ?? null
+  const isSuperAdmin = role === 'super_admin'
+  const isClient = role === 'client'
+
   const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
+
+  // Clients can only view if project is complete
+  if (isClient && project.status !== 'complete') notFound()
+
+  if (!isSuperAdmin) {
+    const { data: membership } = await admin.from('project_members').select('id').eq('user_id', user.id).eq('project_id', project.id).single()
+    if (!membership) notFound()
+  }
 
   const { data: documents } = await supabase.from('documents').select('id').eq('project_id', project.id).eq('ai_processed', true)
   const processedCount = documents?.length ?? 0
@@ -32,6 +47,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
           processedCount={processedCount}
           initialManuscript={project.manuscript ?? null}
           manuscriptGeneratedAt={project.manuscript_generated_at ?? null}
+          readOnly={isClient}
         />
       </main>
     </div>

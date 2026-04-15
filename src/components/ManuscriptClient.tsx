@@ -9,49 +9,49 @@ interface Props {
   processedCount: number
   initialManuscript: string | null
   manuscriptGeneratedAt: string | null
+  readOnly?: boolean
 }
 
-// Simple markdown renderer for the manuscript
 function renderManuscript(text: string) {
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
 
   lines.forEach((line, i) => {
     if (line.startsWith('# ')) {
-      elements.push(<h1 key={i} className="text-2xl font-bold text-gray-900 mb-6 pb-4 border-b border-gray-200">{line.slice(2)}</h1>)
+      elements.push(<h1 key={i} className="text-2xl font-bold mb-6 pb-4" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>{line.slice(2)}</h1>)
     } else if (line.startsWith('## ')) {
-      elements.push(<h2 key={i} className="text-lg font-semibold text-gray-900 mt-8 mb-3">{line.slice(3)}</h2>)
+      elements.push(<h2 key={i} className="text-lg font-semibold mt-8 mb-3" style={{ color: 'var(--text-primary)' }}>{line.slice(3)}</h2>)
     } else if (line.startsWith('### ')) {
-      elements.push(<h3 key={i} className="text-base font-semibold text-gray-800 mt-4 mb-2">{line.slice(4)}</h3>)
+      elements.push(<h3 key={i} className="text-base font-semibold mt-4 mb-2" style={{ color: 'var(--text-secondary)' }}>{line.slice(4)}</h3>)
     } else if (line.match(/^\d+\.\s/)) {
       elements.push(
         <div key={i} className="flex gap-3 mb-2">
-          <span className="text-gray-400 shrink-0 font-medium">{line.match(/^\d+/)![0]}.</span>
-          <p className="text-gray-700 leading-relaxed">{line.replace(/^\d+\.\s/, '')}</p>
+          <span className="shrink-0 font-medium" style={{ color: 'var(--text-muted)' }}>{line.match(/^\d+/)![0]}.</span>
+          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{line.replace(/^\d+\.\s/, '')}</p>
         </div>
       )
     } else if (line.startsWith('- ') || line.startsWith('* ')) {
       elements.push(
         <div key={i} className="flex gap-3 mb-1.5 ml-2">
-          <span className="text-gray-400 shrink-0 mt-1.5">•</span>
-          <p className="text-gray-700 leading-relaxed">{line.slice(2)}</p>
+          <span className="shrink-0 mt-1.5" style={{ color: 'var(--text-muted)' }}>•</span>
+          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{line.slice(2)}</p>
         </div>
       )
     } else if (line.startsWith('---')) {
-      elements.push(<hr key={i} className="border-gray-200 my-6" />)
+      elements.push(<hr key={i} className="my-6" style={{ borderColor: 'var(--border)' }} />)
     } else if (line.startsWith('*') && line.endsWith('*')) {
-      elements.push(<p key={i} className="text-xs text-gray-400 italic mt-4">{line.replace(/^\*|\*$/g, '')}</p>)
+      elements.push(<p key={i} className="text-xs italic mt-4" style={{ color: 'var(--text-muted)' }}>{line.replace(/^\*|\*$/g, '')}</p>)
     } else if (line.trim() === '') {
       elements.push(<div key={i} className="h-2" />)
     } else {
-      elements.push(<p key={i} className="text-gray-700 leading-relaxed mb-1">{line}</p>)
+      elements.push(<p key={i} className="leading-relaxed mb-1" style={{ color: 'var(--text-secondary)' }}>{line}</p>)
     }
   })
 
   return elements
 }
 
-export default function ManuscriptClient({ project, processedCount, initialManuscript, manuscriptGeneratedAt }: Props) {
+export default function ManuscriptClient({ project, processedCount, initialManuscript, manuscriptGeneratedAt, readOnly }: Props) {
   const [manuscript, setManuscript] = useState(initialManuscript)
   const [generatedAt, setGeneratedAt] = useState(manuscriptGeneratedAt)
   const [generating, setGenerating] = useState(false)
@@ -102,13 +102,15 @@ export default function ManuscriptClient({ project, processedCount, initialManus
   return (
     <div className="space-y-6">
       {/* Controls */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between">
+      <div className="dark-card rounded-xl p-5 flex items-center justify-between">
         <div>
-          <h2 className="font-semibold text-gray-900">Intake Manuscript</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Synthesizes {processedCount} processed document{processedCount !== 1 ? 's' : ''} into a consultant briefing
+          <h2 className="font-semibold" style={{ color: 'var(--text-primary)' }}>Intake Manuscript</h2>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            {readOnly
+              ? 'Document review summary prepared for your project'
+              : `Synthesizes ${processedCount} processed document${processedCount !== 1 ? 's' : ''} into a consultant briefing`}
             {generatedAt && (
-              <span className="text-gray-400"> · Last generated {new Date(generatedAt).toLocaleString()}</span>
+              <span style={{ color: 'var(--text-muted)' }}> · Last generated {new Date(generatedAt).toLocaleString()}</span>
             )}
           </p>
         </div>
@@ -118,40 +120,44 @@ export default function ManuscriptClient({ project, processedCount, initialManus
             <>
               <button
                 onClick={handleCopy}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
               >
                 Copy
               </button>
               <button
                 onClick={handleExportDocx}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
+                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
               >
                 Export .docx
               </button>
-              <button
-                onClick={() => setView(v => v === 'rendered' ? 'raw' : 'rendered')}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-              >
-                {view === 'rendered' ? 'Raw' : 'Rendered'}
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={() => setView(v => v === 'rendered' ? 'raw' : 'rendered')}
+                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
+                >
+                  {view === 'rendered' ? 'Raw' : 'Rendered'}
+                </button>
+              )}
             </>
           )}
-          <button
-            onClick={() => setShowConfirm(true)}
-            disabled={generating || processedCount === 0}
-            className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {generating ? 'Generating...' : manuscript ? 'Regenerate' : 'Generate Manuscript'}
-          </button>
+          {!readOnly && (
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={generating || processedCount === 0}
+              className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50"
+            >
+              {generating ? 'Generating...' : manuscript ? 'Regenerate' : 'Generate Manuscript'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* CRAAP confirmation modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Before you generate</h3>
-            <p className="text-sm text-gray-600 mb-4">
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Before you generate</h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
               The manuscript is built on your CRAAP scores. Higher-scored documents will carry more weight in the synthesis. Please confirm you've completed this work before proceeding.
             </p>
             <ul className="space-y-3 mb-6">
@@ -160,8 +166,8 @@ export default function ManuscriptClient({ project, processedCount, initialManus
                 'CRAAP scores have been reviewed and adjusted for each document',
                 'Project-level CRAAP dimension weights reflect this engagement\'s priorities',
               ].map((item, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-gray-700">
-                  <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center shrink-0 text-xs font-bold text-gray-400">{i + 1}</span>
+                <li key={i} className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ border: '2px solid var(--border)', color: 'var(--text-muted)' }}>{i + 1}</span>
                   {item}
                 </li>
               ))}
@@ -169,13 +175,13 @@ export default function ManuscriptClient({ project, processedCount, initialManus
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg"
               >
                 Not yet — go back
               </button>
               <button
                 onClick={handleGenerate}
-                className="flex-1 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800"
+                className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg"
               >
                 Yes — generate
               </button>
@@ -185,27 +191,27 @@ export default function ManuscriptClient({ project, processedCount, initialManus
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-100 rounded-xl px-5 py-4 text-sm text-red-600">{error}</div>
+        <div className="rounded-xl px-5 py-4 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>{error}</div>
       )}
 
-      {processedCount === 0 && !manuscript && (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <p className="text-gray-500">No processed documents yet.</p>
-          <p className="text-sm text-gray-400 mt-1">Upload and process documents before generating a manuscript.</p>
+      {!readOnly && processedCount === 0 && !manuscript && (
+        <div className="text-center py-16 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <p style={{ color: 'var(--text-secondary)' }}>No processed documents yet.</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Upload and process documents before generating a manuscript.</p>
         </div>
       )}
 
       {generating && (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <div className="inline-block w-6 h-6 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-gray-600 font-medium">Synthesizing {processedCount} documents...</p>
-          <p className="text-sm text-gray-400 mt-1">This takes 30–60 seconds</p>
+        <div className="rounded-xl p-12 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent' }} />
+          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Synthesizing {processedCount} documents...</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>This takes 30–60 seconds</p>
         </div>
       )}
 
       {manuscript && !generating && (
-        <div className="bg-white rounded-xl border border-gray-200 p-10">
-          {view === 'rendered' ? (
+        <div className="dark-card rounded-xl p-10">
+          {view === 'rendered' || readOnly ? (
             <div className="prose-reframe">
               {renderManuscript(manuscript)}
             </div>
@@ -213,7 +219,8 @@ export default function ManuscriptClient({ project, processedCount, initialManus
             <textarea
               value={manuscript}
               onChange={e => setManuscript(e.target.value)}
-              className="w-full h-[70vh] font-mono text-sm text-gray-800 border-0 outline-none resize-none"
+              className="w-full h-[70vh] font-mono text-sm border-0 outline-none resize-none"
+              style={{ background: 'transparent', color: 'var(--text-secondary)' }}
             />
           )}
         </div>

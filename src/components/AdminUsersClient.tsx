@@ -110,21 +110,23 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   }
 
   if (loading) {
-    return <div className="text-sm text-gray-400 py-8 text-center">Loading users...</div>
+    return <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading users...</div>
   }
+
+  const showProjectAssignment = (role: string | null) => role === 'project_admin' || role === 'client'
 
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Users</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Users</h2>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             {users.length} user{users.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={() => setShowInvite(true)}
-          className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+          className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all"
         >
           Invite User
         </button>
@@ -136,37 +138,40 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
           const isMe = user.id === currentUserId
 
           return (
-            <div key={user.id} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div key={user.id} className="dark-card rounded-xl p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <span className="font-medium text-gray-900 text-sm">
+                    <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
                       {user.email}
-                      {isMe && <span className="ml-2 text-xs text-gray-400">(you)</span>}
+                      {isMe && <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>(you)</span>}
                     </span>
                     <select
                       value={user.role ?? ''}
                       onChange={e => handleRoleChange(user.id, e.target.value)}
                       disabled={isMe}
-                      className="text-xs px-2 py-0.5 border border-gray-200 rounded-lg text-gray-700 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="dark-select text-xs px-2 py-0.5 rounded-lg outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <option value="">No role</option>
                       <option value="super_admin">Super Admin</option>
                       <option value="project_admin">Project Admin</option>
+                      <option value="client">Client</option>
                     </select>
                   </div>
 
-                  {user.role === 'project_admin' && (
+                  {showProjectAssignment(user.role) && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {user.projects.map(p => (
                         <span
                           key={p.id}
-                          className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full flex items-center gap-1"
+                          className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)' }}
                         >
                           {p.name}
                           <button
                             onClick={() => handleRemoveProject(user.id, p.id)}
-                            className="text-blue-400 hover:text-red-500 ml-0.5 leading-none"
+                            className="ml-0.5 leading-none transition-colors"
+                            style={{ color: 'var(--blue)' }}
                           >
                             ✕
                           </button>
@@ -178,7 +183,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                             if (e.target.value) handleAssignProject(user.id, e.target.value)
                             e.target.value = ''
                           }}
-                          className="text-xs px-2 py-0.5 border border-dashed border-gray-300 rounded-full text-gray-500 bg-white"
+                          className="dark-select text-xs px-2 py-0.5 rounded-full"
+                          style={{ borderStyle: 'dashed' }}
                         >
                           <option value="">+ Add project</option>
                           {unassigned.map(p => (
@@ -187,13 +193,13 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                         </select>
                       )}
                       {user.projects.length === 0 && (
-                        <span className="text-xs text-gray-400 italic">No projects assigned</span>
+                        <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>No projects assigned</span>
                       )}
                     </div>
                   )}
 
                   {user.role === 'super_admin' && (
-                    <p className="text-xs text-gray-400 mt-1">Access to all projects</p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Access to all projects</p>
                   )}
                 </div>
 
@@ -205,18 +211,19 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                         value={resetPassword}
                         onChange={e => setResetPassword(e.target.value)}
                         placeholder="New password"
-                        className="text-xs px-3 py-1.5 border border-gray-300 rounded-lg w-36 outline-none focus:ring-1 focus:ring-gray-400"
+                        className="dark-input text-xs px-3 py-1.5 rounded-lg w-36 outline-none"
                       />
                       <button
                         onClick={() => handleResetPassword(user.id)}
                         disabled={resetting || !resetPassword.trim()}
-                        className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg disabled:opacity-40"
+                        className="dark-btn-primary text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
                       >
                         {resetting ? 'Saving...' : 'Set'}
                       </button>
                       <button
                         onClick={() => { setResetTarget(null); setResetPassword('') }}
-                        className="text-xs text-gray-400 hover:text-gray-700"
+                        className="text-xs transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
                       >
                         Cancel
                       </button>
@@ -225,14 +232,16 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                     <>
                       <button
                         onClick={() => setResetTarget(user.id)}
-                        className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded"
+                        className="text-xs px-2 py-1 rounded transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
                       >
                         Reset password
                       </button>
                       {!isMe && (
                         <button
                           onClick={() => handleDeleteUser(user.id, user.email ?? '')}
-                          className="text-xs text-gray-400 hover:text-red-600 px-2 py-1 rounded"
+                          className="text-xs px-2 py-1 rounded transition-colors"
+                          style={{ color: 'var(--text-muted)' }}
                         >
                           Remove
                         </button>
@@ -247,59 +256,60 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
       </div>
 
       {showInvite && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-5">Invite User</h3>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>Invite User</h3>
             <form onSubmit={handleInvite} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
                 <input
                   required
                   type="email"
                   value={inviteForm.email}
                   onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Temporary Password</label>
                 <input
                   required
                   type="text"
                   value={inviteForm.password}
                   onChange={e => setInviteForm({ ...inviteForm, password: e.target.value })}
                   placeholder="Share this with the user to log in"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Role</label>
                 <select
                   value={inviteForm.role}
                   onChange={e => setInviteForm({ ...inviteForm, role: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="dark-select w-full px-3 py-2 rounded-lg text-sm outline-none"
                 >
-                  <option value="project_admin">Project Admin — upload and CRAAP scoring only</option>
+                  <option value="client">Client — project status, documents, comments</option>
+                  <option value="project_admin">Project Admin — upload and CRAAP scoring</option>
                   <option value="super_admin">Super Admin — full access</option>
                 </select>
               </div>
 
               {inviteError && (
-                <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{inviteError}</p>
+                <p className="text-sm px-3 py-2 rounded-lg" style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}>{inviteError}</p>
               )}
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => { setShowInvite(false); setInviteError('') }}
-                  className="flex-1 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50"
+                  className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={inviting}
-                  className="flex-1 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                  className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50"
                 >
                   {inviting ? 'Creating...' : 'Create User'}
                 </button>
