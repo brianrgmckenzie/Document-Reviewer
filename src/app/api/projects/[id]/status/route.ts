@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { sendStatusChange } from '@/lib/email'
 
 const VALID_STATUSES = ['intake', 'under_review', 'complete']
 
@@ -26,8 +27,47 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
-  const { error } = await admin.from('projects').update({ status }).eq('id', id)
+  const { data: project, error } = await admin.from('projects').update({ status }).eq('id', id).select('name, slug').single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Notify clients assigned to this project
+  if (project && (status === 'under_review' || status === 'complete')) {
+    ;(async () => {
+      try {
+        // Find client members for this project
+        const { data: members } = await admin
+          .from('project_members')
+          .select('user_id')
+          .eq('project_id', id)
+
+        if (members && members.length > 0) {
+          const memberIds = members.map((m: { user_id: string }) => m.user_id)
+          const { data: roles } = await admin
+            .from('user_roles')
+            .select('user_id')
+            .in('user_id', memberIds)
+            .eq('role', 'client')
+
+          if (roles && roles.length > 0) {
+            const clientIds = roles.map((r: { user_id: string }) => r.user_id)
+            const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
+            const clientEmails = authUsers
+              .filter((u: any) => clientIds.includes(u.id) && u.email)
+              .map((u: any) => u.email as string)
+
+            await sendStatusChange({
+              to: clientEmails,
+              projectName: project.name,
+              projectSlug: project.slug,
+              status,
+            })
+          }
+        }
+      } catch (err) {
+        console.error('Status change email failed:', err)
+      }
+    })()
+  }
 
   return NextResponse.json({ ok: true })
 }

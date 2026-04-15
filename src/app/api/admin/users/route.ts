@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendWelcomeClient, sendWelcomeStaff } from '@/lib/email'
 
 async function requireSuperAdmin() {
   const supabase = await createClient()
@@ -69,6 +70,14 @@ export async function POST(request: NextRequest) {
   }
 
   await admin.from('user_roles').insert({ user_id: user.id, role })
+
+  // Send welcome email (fire and forget — don't fail the request if email fails)
+  if (user.email) {
+    const send = role === 'client'
+      ? sendWelcomeClient({ to: user.email, tempPassword: password })
+      : sendWelcomeStaff({ to: user.email, role, tempPassword: password })
+    send.catch(err => console.error('Welcome email failed:', err))
+  }
 
   return NextResponse.json({ user: { id: user.id, email: user.email, role } })
 }

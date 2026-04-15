@@ -57,6 +57,13 @@ export default function DocumentUpload({ projectId }: Props) {
       return
     }
 
+    // Notify staff of upload (fire and forget)
+    fetch('/api/notify/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, fileName: file.name }),
+    }).catch(() => {})
+
     // Step 1: Quick scan (fast, uses Haiku)
     setStatus('Quick scan...')
     const scanResponse = await fetch('/api/quick-scan', {
@@ -105,29 +112,33 @@ export default function DocumentUpload({ projectId }: Props) {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+        className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all"
       >
         Upload Documents
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Upload Documents</h3>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Upload Documents</h3>
 
             <div
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)}
               onDrop={e => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
               onClick={() => !uploading && inputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
-                dragOver ? 'border-gray-900 bg-gray-50' : 'border-gray-300 hover:border-gray-400'
-              } ${uploading ? 'cursor-default opacity-60' : ''}`}
+              className="border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors"
+              style={{
+                borderColor: dragOver ? 'var(--blue)' : 'var(--border)',
+                background: dragOver ? 'var(--blue-dim)' : 'transparent',
+                opacity: uploading ? 0.6 : 1,
+                cursor: uploading ? 'default' : 'pointer',
+              }}
             >
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Drop files here or click to select
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
                 PDF, DOCX, XLSX, TXT — multiple files supported
               </p>
               <input
@@ -142,7 +153,7 @@ export default function DocumentUpload({ projectId }: Props) {
             </div>
 
             {status && (
-              <div className="mt-4 text-sm text-gray-600 bg-gray-50 rounded-lg px-4 py-3">
+              <div className="mt-4 text-sm rounded-lg px-4 py-3" style={{ background: 'var(--surface-raised)', color: 'var(--text-secondary)' }}>
                 {status}
               </div>
             )}
@@ -151,7 +162,8 @@ export default function DocumentUpload({ projectId }: Props) {
               <button
                 onClick={() => { if (!uploading) { setOpen(false); setStatus('') } }}
                 disabled={uploading}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-40"
+                className="px-4 py-2 text-sm transition-colors disabled:opacity-40"
+                style={{ color: 'var(--text-muted)' }}
               >
                 {uploading ? 'Processing...' : 'Close'}
               </button>
