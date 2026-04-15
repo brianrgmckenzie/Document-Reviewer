@@ -25,7 +25,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   const [users, setUsers] = useState<UserWithRole[]>([])
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
-  const [inviteForm, setInviteForm] = useState({ email: '', password: '', role: 'project_admin' })
+  const [inviteForm, setInviteForm] = useState({ email: '', password: '', role: 'client' })
+  const [inviteProjects, setInviteProjects] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [resetTarget, setResetTarget] = useState<string | null>(null)
@@ -53,8 +54,20 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
     })
 
     if (res.ok) {
+      const { user: newUser } = await res.json()
+      // Assign selected projects
+      await Promise.all(
+        inviteProjects.map(projectId =>
+          fetch(`/api/admin/users/${newUser.id}/projects`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectId }),
+          })
+        )
+      )
       setShowInvite(false)
-      setInviteForm({ email: '', password: '', role: 'project_admin' })
+      setInviteForm({ email: '', password: '', role: 'client' })
+      setInviteProjects([])
       await loadUsers()
     } else {
       const data = await res.json()
@@ -64,6 +77,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   }
 
   async function handleRoleChange(userId: string, role: string) {
+    // Optimistic update so the select reflects immediately
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u))
     await fetch(`/api/admin/users/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -109,11 +124,23 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
     await loadUsers()
   }
 
+  function addInviteProject(projectId: string) {
+    if (projectId && !inviteProjects.includes(projectId)) {
+      setInviteProjects(prev => [...prev, projectId])
+    }
+  }
+
+  function removeInviteProject(projectId: string) {
+    setInviteProjects(prev => prev.filter(id => id !== projectId))
+  }
+
   if (loading) {
     return <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading users...</div>
   }
 
   const showProjectAssignment = (role: string | null) => role === 'project_admin' || role === 'client'
+  const inviteRoleNeedsProjects = inviteForm.role === 'project_admin' || inviteForm.role === 'client'
+  const inviteUnassigned = projects.filter(p => !inviteProjects.includes(p.id))
 
   return (
     <div>
@@ -285,7 +312,10 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Role</label>
                 <select
                   value={inviteForm.role}
-                  onChange={e => setInviteForm({ ...inviteForm, role: e.target.value })}
+                  onChange={e => {
+                    setInviteForm({ ...inviteForm, role: e.target.value })
+                    setInviteProjects([])
+                  }}
                   className="dark-select w-full px-3 py-2 rounded-lg text-sm outline-none"
                 >
                   <option value="client">Client — project status, documents, comments</option>
@@ -294,6 +324,45 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                 </select>
               </div>
 
+              {inviteRoleNeedsProjects && (
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    Assign Projects
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {inviteProjects.map(pid => {
+                      const p = projects.find(p => p.id === pid)
+                      if (!p) return null
+                      return (
+                        <span
+                          key={pid}
+                          className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)' }}
+                        >
+                          {p.name}
+                          <button type="button" onClick={() => removeInviteProject(pid)} className="ml-0.5 leading-none">✕</button>
+                        </span>
+                      )
+                    })}
+                    {inviteUnassigned.length > 0 && (
+                      <select
+                        onChange={e => { addInviteProject(e.target.value); e.target.value = '' }}
+                        className="dark-select text-xs px-2 py-0.5 rounded-full"
+                        style={{ borderStyle: 'dashed' }}
+                      >
+                        <option value="">+ Add project</option>
+                        {inviteUnassigned.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    )}
+                    {inviteProjects.length === 0 && (
+                      <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>No projects selected</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {inviteError && (
                 <p className="text-sm px-3 py-2 rounded-lg" style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}>{inviteError}</p>
               )}
@@ -301,7 +370,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => { setShowInvite(false); setInviteError('') }}
+                  onClick={() => { setShowInvite(false); setInviteError(''); setInviteProjects([]) }}
                   className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg"
                 >
                   Cancel
