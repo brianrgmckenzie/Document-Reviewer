@@ -41,10 +41,15 @@ export interface Project {
   description: string | null
   project_type: string | null
   slug: string
+  status: string | null
   created_by: string
   created_at: string
   updated_at: string
   image_url: string | null
+  manuscript: string | null
+  manuscript_generated_at: string | null
+  craap_weights: Record<string, number> | null
+  search_suppressed_words: string[] | null
 }
 
 export interface Document {
