@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import NewProjectButton from '@/components/NewProjectButton'
 import AppLogo from '@/components/AppLogo'
+import { getEffectiveSession } from '@/lib/getEffectiveSession'
 import type { Project } from '@/lib/types'
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
@@ -21,16 +22,18 @@ export default async function DashboardPage() {
 
   const admin = createAdminClient()
   const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
-  const role = roleData?.role ?? null
+  const realRole = roleData?.role ?? null
+  const session = await getEffectiveSession(user.id, user.email ?? '', realRole)
+  const { role, userId: effectiveUserId, isImpersonating } = session
   const isSuperAdmin = role === 'super_admin'
 
   let projects: Project[] = []
 
-  if (isSuperAdmin) {
+  if (isSuperAdmin && !isImpersonating) {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
     projects = data ?? []
   } else {
-    const { data: memberships } = await admin.from('project_members').select('project_id').eq('user_id', user.id)
+    const { data: memberships } = await admin.from('project_members').select('project_id').eq('user_id', effectiveUserId)
     const projectIds = memberships?.map((m: { project_id: string }) => m.project_id) ?? []
     if (projectIds.length > 0) {
       const { data } = await supabase.from('projects').select('*').in('id', projectIds).order('created_at', { ascending: false })

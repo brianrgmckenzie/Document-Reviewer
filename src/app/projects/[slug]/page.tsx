@@ -10,6 +10,7 @@ import ProjectImageUpload from '@/components/ProjectImageUpload'
 import ProjectStatusControl from '@/components/ProjectStatusControl'
 import type { Document } from '@/lib/types'
 import AppLogo from '@/components/AppLogo'
+import { getEffectiveSession } from '@/lib/getEffectiveSession'
 
 const TIER_STYLES: Record<number, { bg: string; color: string }> = {
   1: { bg: 'rgba(168,85,247,0.15)', color: '#c084fc' },
@@ -32,7 +33,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
 
   const admin = createAdminClient()
   const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
-  const role = roleData?.role ?? null
+  const session = await getEffectiveSession(user.id, user.email ?? '', roleData?.role ?? null)
+  const { role, userId: effectiveUserId, isImpersonating } = session
   const isSuperAdmin = role === 'super_admin'
   const isClient = role === 'client'
   const isStaff = !isClient
@@ -40,8 +42,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
 
-  if (!isSuperAdmin) {
-    const { data: membership } = await admin.from('project_members').select('id').eq('user_id', user.id).eq('project_id', project.id).single()
+  if (isSuperAdmin && !isImpersonating) {
+    // super_admin always has access
+  } else {
+    const { data: membership } = await admin.from('project_members').select('id').eq('user_id', effectiveUserId).eq('project_id', project.id).single()
     if (!membership) notFound()
   }
 

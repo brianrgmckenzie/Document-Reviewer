@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import ManuscriptClient from '@/components/ManuscriptClient'
 import AppLogo from '@/components/AppLogo'
+import { getEffectiveSession } from '@/lib/getEffectiveSession'
 
 export default async function ManuscriptPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -13,7 +14,8 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
 
   const admin = createAdminClient()
   const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
-  const role = roleData?.role ?? null
+  const session = await getEffectiveSession(user.id, user.email ?? '', roleData?.role ?? null)
+  const { role, userId: effectiveUserId, isImpersonating } = session
   const isSuperAdmin = role === 'super_admin'
   const isClient = role === 'client'
 
@@ -23,8 +25,10 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
   // Clients can only view if project is complete
   if (isClient && project.status !== 'complete') notFound()
 
-  if (!isSuperAdmin) {
-    const { data: membership } = await admin.from('project_members').select('id').eq('user_id', user.id).eq('project_id', project.id).single()
+  if (isSuperAdmin && !isImpersonating) {
+    // super_admin always has access
+  } else {
+    const { data: membership } = await admin.from('project_members').select('id').eq('user_id', effectiveUserId).eq('project_id', project.id).single()
     if (!membership) notFound()
   }
 

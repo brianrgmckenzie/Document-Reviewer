@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Project {
   id: string
@@ -25,6 +26,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   const [users, setUsers] = useState<UserWithRole[]>([])
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
+  const [impersonating, setImpersonating] = useState<string | null>(null)
+  const router = useRouter()
   const [inviteForm, setInviteForm] = useState({ email: '', password: '', role: 'client' })
   const [inviteProjects, setInviteProjects] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
@@ -116,6 +119,17 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
       body: JSON.stringify({ projectId }),
     })
     await loadUsers()
+  }
+
+  async function handleViewAs(userId: string) {
+    setImpersonating(userId)
+    await fetch('/api/impersonate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    })
+    router.push('/dashboard')
+    router.refresh()
   }
 
   async function handleDeleteUser(userId: string, email: string) {
@@ -257,6 +271,16 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                     </div>
                   ) : (
                     <>
+                      {!isMe && user.role !== 'super_admin' && (
+                        <button
+                          onClick={() => handleViewAs(user.id)}
+                          disabled={impersonating === user.id}
+                          className="text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
+                          style={{ color: 'var(--blue)' }}
+                        >
+                          {impersonating === user.id ? 'Loading...' : 'View as'}
+                        </button>
+                      )}
                       <button
                         onClick={() => setResetTarget(user.id)}
                         className="text-xs px-2 py-1 rounded transition-colors"

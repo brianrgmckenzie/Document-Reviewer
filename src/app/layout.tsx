@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from 'next/headers'
+import { createAdminClient } from '@/lib/supabase/admin'
+import ImpersonationBanner from '@/components/ImpersonationBanner'
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,17 +20,43 @@ export const metadata: Metadata = {
   description: "Client document intake and review platform",
 };
 
-export default function RootLayout({
+async function getImpersonationState() {
+  try {
+    const cookieStore = await cookies()
+    const impersonateId = cookieStore.get('rc_impersonate')?.value
+    if (!impersonateId) return null
+
+    const admin = createAdminClient()
+    const { data: { user }, error } = await admin.auth.admin.getUserById(impersonateId)
+    if (error || !user) return null
+
+    const { data: roleData } = await admin
+      .from('user_roles').select('role').eq('user_id', impersonateId).single()
+
+    return { email: user.email ?? impersonateId, role: roleData?.role ?? null }
+  } catch {
+    return null
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const impersonation = await getImpersonationState()
+
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {impersonation && (
+          <ImpersonationBanner email={impersonation.email} role={impersonation.role} />
+        )}
+        {children}
+      </body>
     </html>
   );
 }
