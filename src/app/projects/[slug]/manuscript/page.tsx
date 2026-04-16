@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import ManuscriptClient from '@/components/ManuscriptClient'
+import AppLogo from '@/components/AppLogo'
 
 export default async function ManuscriptPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -34,7 +35,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
       <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link href="/dashboard" className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>Projects</Link>
+          <Link href="/dashboard"><AppLogo height={18} /></Link>
           <span style={{ color: 'var(--border)' }}>/</span>
           <Link href={`/projects/${slug}`} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>{project.name}</Link>
           <span style={{ color: 'var(--border)' }}>/</span>

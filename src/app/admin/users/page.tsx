@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import AdminUsersClient from '@/components/AdminUsersClient'
+import AppLogo from '@/components/AppLogo'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
@@ -28,7 +29,7 @@ export default async function AdminUsersPage() {
       <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>Projects</Link>
+            <Link href="/dashboard"><AppLogo height={18} /></Link>
             <span style={{ color: 'var(--border)' }}>/</span>
             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Users</span>
           </div>

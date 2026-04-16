@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import NewProjectButton from '@/components/NewProjectButton'
+import AppLogo from '@/components/AppLogo'
 import type { Project } from '@/lib/types'
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; color: string }> = {
@@ -74,18 +75,8 @@ export default async function DashboardPage() {
       <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--blue)' }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9"/>
-                <rect x="8" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
-                <rect x="1" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
-                <rect x="8" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.3"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Reframe Concepts</p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Document Review</p>
-            </div>
+            <AppLogo height={22} />
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Document Review</span>
           </div>
           <div className="flex items-center gap-5">
             {isSuperAdmin && (

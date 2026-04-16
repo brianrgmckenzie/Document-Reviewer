@@ -30,18 +30,13 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--background)' }}>
       <div className="w-full max-w-sm">
-        <div className="flex justify-center mb-8">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--blue)' }}>
-            <svg width="18" height="18" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.9"/>
-              <rect x="8" y="1" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
-              <rect x="1" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.6"/>
-              <rect x="8" y="8" width="5" height="5" rx="1" fill="white" fillOpacity="0.3"/>
-            </svg>
+        <div className="flex justify-center mb-6">
+          <div style={{ background: 'white', borderRadius: '10px', padding: '10px 20px', display: 'inline-flex' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/reframe-logo.png" alt="Reframe Concepts" style={{ height: '40px', width: 'auto' }} />
           </div>
         </div>
         <div className="text-center mb-8">
-          <h1 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Reframe Concepts</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Document Review Platform</p>
         </div>
         <div className="rounded-2xl p-8" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>

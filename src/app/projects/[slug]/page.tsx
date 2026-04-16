@@ -9,6 +9,7 @@ import SearchModal from '@/components/SearchModal'
 import ProjectImageUpload from '@/components/ProjectImageUpload'
 import ProjectStatusControl from '@/components/ProjectStatusControl'
 import type { Document } from '@/lib/types'
+import AppLogo from '@/components/AppLogo'
 
 const TIER_STYLES: Record<number, { bg: string; color: string }> = {
   1: { bg: 'rgba(168,85,247,0.15)', color: '#c084fc' },
@@ -64,7 +65,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
           <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/dashboard" className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>Projects</Link>
+              <Link href="/dashboard"><AppLogo height={18} /></Link>
               <span style={{ color: 'var(--border)' }}>/</span>
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{project.name}</span>
             </div>
@@ -181,7 +182,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
       <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>Projects</Link>
+            <Link href="/dashboard"><AppLogo height={18} /></Link>
             <span style={{ color: 'var(--border)' }}>/</span>
             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{project.name}</span>
           </div>
