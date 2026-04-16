@@ -21,13 +21,21 @@ export async function PATCH(
   }
 
   const { id } = await params
-  const { role, password, first_name, last_name, organization } = await request.json()
+  const body = await request.json()
+  const { password, first_name, last_name, organization } = body
   const admin = createAdminClient()
 
-  if (role) {
-    await admin
-      .from('user_roles')
-      .upsert({ user_id: id, role }, { onConflict: 'user_id' })
+  // role key present in body (even empty string = remove role)
+  if ('role' in body) {
+    const role = body.role
+    if (role) {
+      const { error } = await admin
+        .from('user_roles')
+        .upsert({ user_id: id, role }, { onConflict: 'user_id' })
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    } else {
+      await admin.from('user_roles').delete().eq('user_id', id)
+    }
   }
 
   if (password) {

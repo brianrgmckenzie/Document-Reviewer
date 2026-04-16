@@ -49,6 +49,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   const [resetTarget, setResetTarget] = useState<string | null>(null)
   const [resetPassword, setResetPassword] = useState('')
   const [resetting, setResetting] = useState(false)
+  const [roleError, setRoleError] = useState('')
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users')
@@ -93,12 +94,20 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   }
 
   async function handleRoleChange(userId: string, role: string) {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u))
-    await fetch(`/api/admin/users/${userId}`, {
+    setRoleError('')
+    const prev = users
+    setUsers(users => users.map(u => u.id === userId ? { ...u, role } : u))
+    const res = await fetch(`/api/admin/users/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role }),
     })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setRoleError(data.error ?? 'Failed to update role')
+      setUsers(prev)
+      return
+    }
     await loadUsers()
   }
 
@@ -202,6 +211,10 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
           Invite User
         </button>
       </div>
+
+      {roleError && (
+        <p className="mb-4 text-sm px-3 py-2 rounded-lg" style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}>{roleError}</p>
+      )}
 
       <div className="space-y-3">
         {users.map(user => {
