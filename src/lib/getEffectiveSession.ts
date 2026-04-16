@@ -7,6 +7,7 @@ export type EffectiveSession = {
   role: string | null
   isImpersonating: boolean
   impersonatedEmail?: string
+  impersonatedName?: string
 }
 
 export async function getEffectiveSession(
@@ -35,12 +36,18 @@ export async function getEffectiveSession(
     const { data: roleData } = await admin
       .from('user_roles').select('role').eq('user_id', impersonateId).single()
 
+    const { data: profile } = await admin
+      .from('user_profiles').select('first_name, last_name, organization').eq('user_id', impersonateId).single()
+
+    const nameParts = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+
     return {
       userId: user.id,
       email: user.email ?? '',
       role: roleData?.role ?? null,
       isImpersonating: true,
       impersonatedEmail: user.email ?? impersonateId,
+      impersonatedName: nameParts || undefined,
     }
   } catch {
     return base

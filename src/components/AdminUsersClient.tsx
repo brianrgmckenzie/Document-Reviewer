@@ -15,6 +15,9 @@ interface UserWithRole {
   role: string | null
   projects: Project[]
   created_at: string
+  first_name: string | null
+  last_name: string | null
+  organization: string | null
 }
 
 interface Props {
@@ -22,13 +25,24 @@ interface Props {
   currentUserId: string
 }
 
+function displayName(user: UserWithRole) {
+  const full = [user.first_name, user.last_name].filter(Boolean).join(' ')
+  return full || null
+}
+
 export default function AdminUsersClient({ projects, currentUserId }: Props) {
   const [users, setUsers] = useState<UserWithRole[]>([])
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
   const [impersonating, setImpersonating] = useState<string | null>(null)
+  const [editingProfile, setEditingProfile] = useState<string | null>(null)
+  const [profileForm, setProfileForm] = useState({ first_name: '', last_name: '', organization: '' })
+  const [savingProfile, setSavingProfile] = useState(false)
   const router = useRouter()
-  const [inviteForm, setInviteForm] = useState({ email: '', password: '', role: 'client' })
+  const [inviteForm, setInviteForm] = useState({
+    email: '', password: '', role: 'client',
+    first_name: '', last_name: '', organization: '',
+  })
   const [inviteProjects, setInviteProjects] = useState<string[]>([])
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
@@ -58,7 +72,6 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
 
     if (res.ok) {
       const { user: newUser } = await res.json()
-      // Assign selected projects
       await Promise.all(
         inviteProjects.map(projectId =>
           fetch(`/api/admin/users/${newUser.id}/projects`, {
@@ -69,7 +82,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
         )
       )
       setShowInvite(false)
-      setInviteForm({ email: '', password: '', role: 'client' })
+      setInviteForm({ email: '', password: '', role: 'client', first_name: '', last_name: '', organization: '' })
       setInviteProjects([])
       await loadUsers()
     } else {
@@ -80,7 +93,6 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   }
 
   async function handleRoleChange(userId: string, role: string) {
-    // Optimistic update so the select reflects immediately
     setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u))
     await fetch(`/api/admin/users/${userId}`, {
       method: 'PATCH',
@@ -101,6 +113,27 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
     setResetTarget(null)
     setResetPassword('')
     setResetting(false)
+  }
+
+  function startEditProfile(user: UserWithRole) {
+    setEditingProfile(user.id)
+    setProfileForm({
+      first_name: user.first_name ?? '',
+      last_name: user.last_name ?? '',
+      organization: user.organization ?? '',
+    })
+  }
+
+  async function handleSaveProfile(userId: string) {
+    setSavingProfile(true)
+    await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileForm),
+    })
+    setEditingProfile(null)
+    setSavingProfile(false)
+    await loadUsers()
   }
 
   async function handleAssignProject(userId: string, projectId: string) {
@@ -165,10 +198,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
             {users.length} user{users.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => setShowInvite(true)}
-          className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all"
-        >
+        <button onClick={() => setShowInvite(true)} className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all">
           Invite User
         </button>
       </div>
@@ -177,15 +207,25 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
         {users.map(user => {
           const unassigned = projects.filter(p => !user.projects.some(up => up.id === p.id))
           const isMe = user.id === currentUserId
+          const name = displayName(user)
+          const isEditingProfile = editingProfile === user.id
 
           return (
             <div key={user.id} className="dark-card rounded-xl p-5">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <span className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>
+                <div className="flex-1 min-w-0">
+
+                  {/* Name + email + role row */}
+                  <div className="flex items-center gap-3 mb-1 flex-wrap">
+                    {name && (
+                      <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>
+                        {name}
+                        {isMe && <span className="ml-2 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>(you)</span>}
+                      </span>
+                    )}
+                    <span className="text-sm" style={{ color: name ? 'var(--text-muted)' : 'var(--text-primary)', fontWeight: name ? 400 : 600 }}>
                       {user.email}
-                      {isMe && <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>(you)</span>}
+                      {!name && isMe && <span className="ml-2 text-xs font-normal" style={{ color: 'var(--text-muted)' }}>(you)</span>}
                     </span>
                     <select
                       value={user.role ?? ''}
@@ -200,37 +240,71 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                     </select>
                   </div>
 
+                  {/* Organization */}
+                  {user.organization && !isEditingProfile && (
+                    <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{user.organization}</p>
+                  )}
+
+                  {/* Inline profile editor */}
+                  {isEditingProfile ? (
+                    <div className="mt-2 mb-3 space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          value={profileForm.first_name}
+                          onChange={e => setProfileForm(f => ({ ...f, first_name: e.target.value }))}
+                          placeholder="First name"
+                          className="dark-input flex-1 px-2 py-1.5 rounded-lg text-xs outline-none"
+                        />
+                        <input
+                          value={profileForm.last_name}
+                          onChange={e => setProfileForm(f => ({ ...f, last_name: e.target.value }))}
+                          placeholder="Last name"
+                          className="dark-input flex-1 px-2 py-1.5 rounded-lg text-xs outline-none"
+                        />
+                      </div>
+                      <input
+                        value={profileForm.organization}
+                        onChange={e => setProfileForm(f => ({ ...f, organization: e.target.value }))}
+                        placeholder="Organization"
+                        className="dark-input w-full px-2 py-1.5 rounded-lg text-xs outline-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveProfile(user.id)}
+                          disabled={savingProfile}
+                          className="dark-btn-primary text-xs px-3 py-1 rounded-lg disabled:opacity-50"
+                        >
+                          {savingProfile ? 'Saving...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => setEditingProfile(null)}
+                          className="text-xs px-2 py-1 rounded"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Project assignment */}
                   {showProjectAssignment(user.role) && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {user.projects.map(p => (
-                        <span
-                          key={p.id}
-                          className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-                          style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)' }}
-                        >
+                        <span key={p.id} className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)' }}>
                           {p.name}
-                          <button
-                            onClick={() => handleRemoveProject(user.id, p.id)}
-                            className="ml-0.5 leading-none transition-colors"
-                            style={{ color: 'var(--blue)' }}
-                          >
-                            ✕
-                          </button>
+                          <button onClick={() => handleRemoveProject(user.id, p.id)} className="ml-0.5 leading-none">✕</button>
                         </span>
                       ))}
                       {unassigned.length > 0 && (
                         <select
-                          onChange={e => {
-                            if (e.target.value) handleAssignProject(user.id, e.target.value)
-                            e.target.value = ''
-                          }}
+                          onChange={e => { if (e.target.value) handleAssignProject(user.id, e.target.value); e.target.value = '' }}
                           className="dark-select text-xs px-2 py-0.5 rounded-full"
                           style={{ borderStyle: 'dashed' }}
                         >
                           <option value="">+ Add project</option>
-                          {unassigned.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
+                          {unassigned.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                       )}
                       {user.projects.length === 0 && (
@@ -244,7 +318,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                {/* Action buttons */}
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                   {resetTarget === user.id ? (
                     <div className="flex items-center gap-2">
                       <input
@@ -254,46 +329,40 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                         placeholder="New password"
                         className="dark-input text-xs px-3 py-1.5 rounded-lg w-36 outline-none"
                       />
-                      <button
-                        onClick={() => handleResetPassword(user.id)}
-                        disabled={resetting || !resetPassword.trim()}
-                        className="dark-btn-primary text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
-                      >
+                      <button onClick={() => handleResetPassword(user.id)} disabled={resetting || !resetPassword.trim()}
+                        className="dark-btn-primary text-xs px-3 py-1.5 rounded-lg disabled:opacity-40">
                         {resetting ? 'Saving...' : 'Set'}
                       </button>
-                      <button
-                        onClick={() => { setResetTarget(null); setResetPassword('') }}
-                        className="text-xs transition-colors"
-                        style={{ color: 'var(--text-muted)' }}
-                      >
+                      <button onClick={() => { setResetTarget(null); setResetPassword('') }}
+                        className="text-xs transition-colors" style={{ color: 'var(--text-muted)' }}>
                         Cancel
                       </button>
                     </div>
                   ) : (
                     <>
                       {!isMe && user.role !== 'super_admin' && (
-                        <button
-                          onClick={() => handleViewAs(user.id)}
-                          disabled={impersonating === user.id}
+                        <button onClick={() => handleViewAs(user.id)} disabled={impersonating === user.id}
                           className="text-xs px-2 py-1 rounded transition-colors disabled:opacity-50"
-                          style={{ color: 'var(--blue)' }}
-                        >
+                          style={{ color: 'var(--blue)' }}>
                           {impersonating === user.id ? 'Loading...' : 'View as'}
                         </button>
                       )}
-                      <button
-                        onClick={() => setResetTarget(user.id)}
+                      {!isEditingProfile && (
+                        <button onClick={() => startEditProfile(user)}
+                          className="text-xs px-2 py-1 rounded transition-colors"
+                          style={{ color: 'var(--text-muted)' }}>
+                          Edit profile
+                        </button>
+                      )}
+                      <button onClick={() => setResetTarget(user.id)}
                         className="text-xs px-2 py-1 rounded transition-colors"
-                        style={{ color: 'var(--text-muted)' }}
-                      >
+                        style={{ color: 'var(--text-muted)' }}>
                         Reset password
                       </button>
                       {!isMe && (
-                        <button
-                          onClick={() => handleDeleteUser(user.id, user.email ?? '')}
+                        <button onClick={() => handleDeleteUser(user.id, user.email ?? '')}
                           className="text-xs px-2 py-1 rounded transition-colors"
-                          style={{ color: 'var(--text-muted)' }}
-                        >
+                          style={{ color: 'var(--text-muted)' }}>
                           Remove
                         </button>
                       )}
@@ -306,42 +375,60 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
         })}
       </div>
 
+      {/* Invite modal */}
       {showInvite && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-          <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>Invite User</h3>
             <form onSubmit={handleInvite} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Email</label>
-                <input
-                  required
-                  type="email"
-                  value={inviteForm.email}
-                  onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none"
-                />
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>First Name</label>
+                  <input type="text" value={inviteForm.first_name}
+                    onChange={e => setInviteForm({ ...inviteForm, first_name: e.target.value })}
+                    className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Last Name</label>
+                  <input type="text" value={inviteForm.last_name}
+                    onChange={e => setInviteForm({ ...inviteForm, last_name: e.target.value })}
+                    className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
+                </div>
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Temporary Password</label>
-                <input
-                  required
-                  type="text"
-                  value={inviteForm.password}
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Organization</label>
+                <input type="text" value={inviteForm.organization}
+                  onChange={e => setInviteForm({ ...inviteForm, organization: e.target.value })}
+                  placeholder="e.g. Trinity United Church"
+                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Email <span style={{ color: '#f87171' }}>*</span>
+                </label>
+                <input required type="email" value={inviteForm.email}
+                  onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
+                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Temporary Password <span style={{ color: '#f87171' }}>*</span>
+                </label>
+                <input required type="text" value={inviteForm.password}
                   onChange={e => setInviteForm({ ...inviteForm, password: e.target.value })}
                   placeholder="Share this with the user to log in"
-                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none"
-                />
+                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
               </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Role</label>
-                <select
-                  value={inviteForm.role}
-                  onChange={e => {
-                    setInviteForm({ ...inviteForm, role: e.target.value })
-                    setInviteProjects([])
-                  }}
-                  className="dark-select w-full px-3 py-2 rounded-lg text-sm outline-none"
-                >
+                <select value={inviteForm.role}
+                  onChange={e => { setInviteForm({ ...inviteForm, role: e.target.value }); setInviteProjects([]) }}
+                  className="dark-select w-full px-3 py-2 rounded-lg text-sm outline-none">
                   <option value="client">Client — project status, documents, comments</option>
                   <option value="project_admin">Project Admin — upload and CRAAP scoring</option>
                   <option value="super_admin">Super Admin — full access</option>
@@ -350,34 +437,24 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
 
               {inviteRoleNeedsProjects && (
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    Assign Projects
-                  </label>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Assign Projects</label>
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {inviteProjects.map(pid => {
                       const p = projects.find(p => p.id === pid)
                       if (!p) return null
                       return (
-                        <span
-                          key={pid}
-                          className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-                          style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)' }}
-                        >
+                        <span key={pid} className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          style={{ background: 'var(--blue-dim)', color: 'var(--blue)', border: '1px solid rgba(59,130,246,0.2)' }}>
                           {p.name}
                           <button type="button" onClick={() => removeInviteProject(pid)} className="ml-0.5 leading-none">✕</button>
                         </span>
                       )
                     })}
                     {inviteUnassigned.length > 0 && (
-                      <select
-                        onChange={e => { addInviteProject(e.target.value); e.target.value = '' }}
-                        className="dark-select text-xs px-2 py-0.5 rounded-full"
-                        style={{ borderStyle: 'dashed' }}
-                      >
+                      <select onChange={e => { addInviteProject(e.target.value); e.target.value = '' }}
+                        className="dark-select text-xs px-2 py-0.5 rounded-full" style={{ borderStyle: 'dashed' }}>
                         <option value="">+ Add project</option>
-                        {inviteUnassigned.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
+                        {inviteUnassigned.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                       </select>
                     )}
                     {inviteProjects.length === 0 && (
@@ -392,18 +469,13 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
               )}
 
               <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
+                <button type="button"
                   onClick={() => { setShowInvite(false); setInviteError(''); setInviteProjects([]) }}
-                  className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg"
-                >
+                  className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={inviting}
-                  className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50"
-                >
+                <button type="submit" disabled={inviting}
+                  className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50">
                   {inviting ? 'Creating...' : 'Create User'}
                 </button>
               </div>

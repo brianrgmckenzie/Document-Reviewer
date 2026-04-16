@@ -27,8 +27,12 @@ export async function GET() {
   const { data: memberships } = await admin
     .from('project_members')
     .select('user_id, project_id, projects(id, name, slug)')
+  const { data: profiles } = await admin
+    .from('user_profiles')
+    .select('user_id, first_name, last_name, organization')
 
-  const roleMap = Object.fromEntries((roles ?? []).map((r: { user_id: string; role: string }) => [r.user_id, r.role]))
+  const roleMap = Object.fromEntries((roles ?? []).map((r: any) => [r.user_id, r.role]))
+  const profileMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.user_id, p]))
 
   const membershipMap: Record<string, { id: string; name: string; slug: string }[]> = {}
   for (const m of memberships ?? []) {
@@ -42,6 +46,9 @@ export async function GET() {
     created_at: u.created_at,
     role: roleMap[u.id] ?? null,
     projects: membershipMap[u.id] ?? [],
+    first_name: profileMap[u.id]?.first_name ?? null,
+    last_name: profileMap[u.id]?.last_name ?? null,
+    organization: profileMap[u.id]?.organization ?? null,
   }))
 
   return NextResponse.json({ users: result })
@@ -52,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { email, password, role } = await request.json()
+  const { email, password, role, first_name, last_name, organization } = await request.json()
   if (!email || !password || !role) {
     return NextResponse.json({ error: 'Email, password, and role are required' }, { status: 400 })
   }
@@ -71,7 +78,15 @@ export async function POST(request: NextRequest) {
 
   await admin.from('user_roles').insert({ user_id: user.id, role })
 
-  // Send welcome email (fire and forget — don't fail the request if email fails)
+  if (first_name || last_name || organization) {
+    await admin.from('user_profiles').insert({
+      user_id: user.id,
+      first_name: first_name?.trim() || null,
+      last_name: last_name?.trim() || null,
+      organization: organization?.trim() || null,
+    })
+  }
+
   if (user.email) {
     const send = role === 'client'
       ? sendWelcomeClient({ to: user.email, tempPassword: password })

@@ -6,9 +6,10 @@ import { useState } from 'react'
 interface Props {
   email: string
   role: string | null
+  name: string | null
 }
 
-export default function ImpersonationBanner({ email, role }: Props) {
+export default function ImpersonationBanner({ email, role, name }: Props) {
   const [exiting, setExiting] = useState(false)
   const router = useRouter()
 
@@ -34,7 +35,8 @@ export default function ImpersonationBanner({ email, role }: Props) {
       <span style={{ fontSize: '12px', color: '#fbbf24' }}>
         <span style={{ opacity: 0.7 }}>Viewing as</span>
         {' '}
-        <strong>{email}</strong>
+        <strong>{name ?? email}</strong>
+        {name && <span style={{ opacity: 0.7 }}> · {email}</span>}
         {' '}
         <span style={{ opacity: 0.7 }}>({roleLabel})</span>
       </span>

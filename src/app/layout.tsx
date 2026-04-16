@@ -32,8 +32,12 @@ async function getImpersonationState() {
 
     const { data: roleData } = await admin
       .from('user_roles').select('role').eq('user_id', impersonateId).single()
+    const { data: profile } = await admin
+      .from('user_profiles').select('first_name, last_name').eq('user_id', impersonateId).single()
 
-    return { email: user.email ?? impersonateId, role: roleData?.role ?? null }
+    const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || null
+
+    return { email: user.email ?? impersonateId, role: roleData?.role ?? null, name }
   } catch {
     return null
   }
@@ -53,7 +57,7 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {impersonation && (
-          <ImpersonationBanner email={impersonation.email} role={impersonation.role} />
+          <ImpersonationBanner email={impersonation.email} role={impersonation.role} name={impersonation.name} />
         )}
         {children}
       </body>

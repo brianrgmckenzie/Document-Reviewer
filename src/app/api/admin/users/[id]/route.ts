@@ -21,7 +21,7 @@ export async function PATCH(
   }
 
   const { id } = await params
-  const { role, password } = await request.json()
+  const { role, password, first_name, last_name, organization } = await request.json()
   const admin = createAdminClient()
 
   if (role) {
@@ -32,6 +32,15 @@ export async function PATCH(
 
   if (password) {
     await admin.auth.admin.updateUserById(id, { password })
+  }
+
+  if (first_name !== undefined || last_name !== undefined || organization !== undefined) {
+    await admin.from('user_profiles').upsert({
+      user_id: id,
+      ...(first_name !== undefined && { first_name: first_name?.trim() || null }),
+      ...(last_name !== undefined && { last_name: last_name?.trim() || null }),
+      ...(organization !== undefined && { organization: organization?.trim() || null }),
+    }, { onConflict: 'user_id' })
   }
 
   return NextResponse.json({ success: true })
