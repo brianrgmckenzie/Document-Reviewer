@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireProjectAccess } from '@/lib/requireProjectAccess'
 import { NextResponse } from 'next/server'
+
+async function getUserRole(userId: string): Promise<string | null> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('user_roles').select('role').eq('user_id', userId).single()
+  return data?.role ?? null
+}
 
 export async function DELETE(
   _req: Request,
@@ -43,15 +50,19 @@ export async function PATCH(
   const body = await req.json()
 
   // Only allow updating safe fields via this route
-  const allowed = ['image_url']
+  const allowedFields = ['image_url']
   const update: Record<string, unknown> = {}
-  for (const key of allowed) {
+  for (const key of allowedFields) {
     if (key in body) update[key] = body[key]
   }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: 'No valid fields' }, { status: 400 })
   }
+
+  const role = await getUserRole(user.id)
+  const allowed = await requireProjectAccess(user.id, id, role)
+  if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = createAdminClient()
   const { error } = await admin.from('projects').update(update).eq('id', id)
