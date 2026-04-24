@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+const SECURE = process.env.NODE_ENV === 'production'
+
 async function requireSuperAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,7 +23,6 @@ export async function POST(request: NextRequest) {
   const { userId } = await request.json()
   if (!userId) return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
 
-  // Confirm target user exists
   const admin = createAdminClient()
   const { data: { user }, error } = await admin.auth.admin.getUserById(userId)
   if (error || !user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -29,9 +30,10 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ ok: true })
   response.cookies.set('rc_impersonate', userId, {
     httpOnly: true,
+    secure: SECURE,
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60, // 1 hour max
+    maxAge: 60 * 60,
   })
   return response
 }
@@ -41,6 +43,7 @@ export async function DELETE() {
   const response = NextResponse.json({ ok: true })
   response.cookies.set('rc_impersonate', '', {
     httpOnly: true,
+    secure: SECURE,
     sameSite: 'lax',
     path: '/',
     maxAge: 0,

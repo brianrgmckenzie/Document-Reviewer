@@ -13,6 +13,7 @@
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
     "docx": "^9.6.1",
+    "mammoth": "^1.12.0",
     "next": "16.2.3",
     "pdf2json": "^4.0.2",
     "react": "19.2.4",

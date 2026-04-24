@@ -4,17 +4,17 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const CRAAP_KEYS = ['currency', 'relevance', 'authority', 'completeness', 'purpose'] as const
+const PARCA_KEYS = ['currency', 'relevance', 'authority', 'completeness', 'purpose'] as const
 
-function computeWeightedCRAAP(doc: any, weights: Record<string, number>): number {
-  return CRAAP_KEYS.reduce((sum, key) => {
+function computeWeightedPARCA(doc: any, weights: Record<string, number>): number {
+  return PARCA_KEYS.reduce((sum, key) => {
     const score = doc[`craap_${key}`] ?? 5
     const weight = weights[key] ?? 1
     return sum + score * weight
   }, 0)
 }
 
-function craapLabel(total: number, max: number): string {
+function parcaLabel(total: number, max: number): string {
   const pct = total / max
   if (pct >= 0.8) return 'Very High'
   if (pct >= 0.6) return 'High'
@@ -47,19 +47,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No processed documents found' }, { status: 400 })
   }
 
-  // Get project-level CRAAP weights (defaults to 1 each)
+  // Get project-level PARCA weights (defaults to 1 each)
   const weights: Record<string, number> = project.craap_weights ?? {
     currency: 1, relevance: 1, authority: 1, completeness: 1, purpose: 1,
   }
 
   // Compute max possible weighted score
-  const maxWeighted = CRAAP_KEYS.reduce((sum, key) => sum + 10 * (weights[key] ?? 1), 0)
+  const maxWeighted = PARCA_KEYS.reduce((sum, key) => sum + 10 * (weights[key] ?? 1), 0)
 
   // Score and sort documents — highest CRAAP first
   const scored = documents
     .map(doc => ({
       ...doc,
-      _weightedScore: computeWeightedCRAAP(doc, weights),
+      _weightedScore: computeWeightedPARCA(doc, weights),
     }))
     .sort((a, b) => b._weightedScore - a._weightedScore)
 
@@ -75,15 +75,15 @@ export async function POST(request: NextRequest) {
 
   // Build document summaries — ranked by weighted CRAAP
   const docSummaries = scored.map((doc, i) => {
-    const rawTotal = doc.craap_total ?? (CRAAP_KEYS.reduce((s, k) => s + (doc[`craap_${k}`] ?? 5), 0))
+    const rawTotal = doc.craap_total ?? (PARCA_KEYS.reduce((s, k) => s + (doc[`craap_${k}`] ?? 5), 0))
     const weightedScore = doc._weightedScore
-    const influence = craapLabel(weightedScore, maxWeighted)
+    const influence = parcaLabel(weightedScore, maxWeighted)
 
     return `
-DOCUMENT ${i + 1} [CRAAP: ${rawTotal}/50 | Weighted: ${weightedScore.toFixed(1)}/${maxWeighted.toFixed(0)} | Influence: ${influence}]
+DOCUMENT ${i + 1} [PARCA: ${rawTotal}/50 | Weighted: ${weightedScore.toFixed(1)}/${maxWeighted.toFixed(0)} | Influence: ${influence}]
 Title: ${doc.title ?? doc.file_name}
 Date: ${doc.document_date ?? 'Unknown'} | Category: ${doc.category ?? 'Unknown'} | Tier: ${doc.authority_tier_label ?? 'Unknown'}
-CRAAP Breakdown — Currency: ${doc.craap_currency ?? '?'} | Relevance: ${doc.craap_relevance ?? '?'} | Authority: ${doc.craap_authority ?? '?'} | Completeness: ${doc.craap_completeness ?? '?'} | Purpose: ${doc.craap_purpose ?? '?'}
+PARCA Breakdown — Purpose: ${doc.craap_purpose ?? '?'} | Authority: ${doc.craap_authority ?? '?'} | Relevance: ${doc.craap_relevance ?? '?'} | Completeness: ${doc.craap_completeness ?? '?'} | Accuracy: ${doc.craap_currency ?? '?'}
 Sentiment: ${doc.sentiment ?? 'neutral'}
 Summary: ${doc.summary ?? 'No summary available'}
 Chief Concerns: ${(doc.chief_concerns ?? []).join(' | ') || 'None identified'}
@@ -101,12 +101,12 @@ PROJECT: ${project.name}
 TYPE: ${project.project_type ?? 'Unknown'}
 ${project.description ? `DESCRIPTION: ${project.description}` : ''}
 
-CRAAP WEIGHTING APPLIED TO THIS ENGAGEMENT:
-Currency ×${weights.currency} | Relevance ×${weights.relevance} | Authority ×${weights.authority} | Completeness ×${weights.completeness} | Purpose ×${weights.purpose}
+PARCA WEIGHTING APPLIED TO THIS ENGAGEMENT:
+Purpose ×${weights.purpose} | Authority ×${weights.authority} | Relevance ×${weights.relevance} | Completeness ×${weights.completeness} | Accuracy ×${weights.currency}
 Maximum possible weighted score: ${maxWeighted.toFixed(0)} pts
 
 CRITICAL INSTRUCTION ON WEIGHTING:
-The documents below are ranked from highest to lowest weighted CRAAP score. Documents with higher CRAAP scores have been assessed as more authoritative, current, and relevant — they should carry more weight in your synthesis. When two documents contain conflicting information, favour the one with the higher CRAAP score. When building the narrative, draw more heavily on high-influence documents and treat low-influence documents as supporting context only.
+The documents below are ranked from highest to lowest weighted PARCA score. Documents with higher PARCA scores have been assessed as more purposeful, authoritative, relevant, complete, and accurate — they should carry more weight in your synthesis. When two documents contain conflicting information, favour the one with the higher PARCA score. When building the narrative, draw more heavily on high-influence documents and treat low-influence documents as supporting context only.
 
 ${docSummaries}
 
@@ -149,7 +149,7 @@ What documents or data are conspicuously absent? What questions remain unanswere
 Write in clear, professional prose. Use bullet points sparingly. This should read like a well-crafted consultant briefing note, not a form or checklist.`
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }],
   })

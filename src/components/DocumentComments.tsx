@@ -21,6 +21,7 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   async function loadComments() {
@@ -33,10 +34,28 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
   useEffect(() => { loadComments() }, [documentId])
 
   useEffect(() => {
+    function onAiComment(e: Event) {
+      const comment = (e as CustomEvent).detail as Comment
+      setComments(prev => [...prev, comment])
+    }
+    window.addEventListener('doc:comment:saved', onAiComment)
+    return () => window.removeEventListener('doc:comment:saved', onAiComment)
+  }, [])
+
+  useEffect(() => {
     if (comments.length > 0) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [comments.length])
+
+  async function handleDelete(commentId: string) {
+    setDeleting(commentId)
+    const res = await fetch(`/api/documents/${documentId}/comments/${commentId}`, { method: 'DELETE' })
+    if (res.ok) {
+      setComments(prev => prev.filter(c => c.id !== commentId))
+    }
+    setDeleting(null)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -75,8 +94,15 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
         <div className="space-y-4 mb-6">
           {comments.map(c => {
             const isMe = c.user_email === currentUserEmail
+            let displayBody = c.body
+            let isAiFinding = false
+            try {
+              const parsed = JSON.parse(c.body)
+              if (parsed._ai === true) { displayBody = parsed.text; isAiFinding = true }
+            } catch { /* plain text */ }
+            const authorLabel = isMe ? (isAiFinding ? 'AI and You' : 'You') : c.user_email
             return (
-              <div key={c.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
+              <div key={c.id} className={`group flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
                   style={{ background: isMe ? 'var(--blue-dim)' : 'var(--surface-raised)', color: isMe ? 'var(--blue)' : 'var(--text-muted)', border: '1px solid var(--border)' }}
@@ -86,11 +112,22 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
                 <div className={`flex-1 ${isMe ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                      {isMe ? 'You' : c.user_email}
+                      {authorLabel}
                     </span>
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
                       {new Date(c.created_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {isMe && (
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        disabled={deleting === c.id}
+                        className="text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: 'var(--text-muted)' }}
+                        title="Delete comment"
+                      >
+                        {deleting === c.id ? '...' : '✕'}
+                      </button>
+                    )}
                   </div>
                   <div
                     className="text-sm px-3 py-2 rounded-xl max-w-prose"
@@ -100,7 +137,7 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
                       color: 'var(--text-primary)',
                     }}
                   >
-                    {c.body}
+                    {displayBody}
                   </div>
                 </div>
               </div>

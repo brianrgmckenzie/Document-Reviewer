@@ -6,17 +6,43 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import type { Document } from '@/lib/types'
 
-export default function DocumentCard({ document: doc, projectSlug, uploaderEmail }: { document: Document; projectSlug: string; uploaderEmail?: string }) {
+function parcaColor(total: number) {
+  const pct = total / 50
+  if (pct >= 0.7) return 'var(--success)'
+  if (pct >= 0.45) return 'var(--warning)'
+  return 'var(--risk)'
+}
+
+function salienceColor(n: number) {
+  if (n >= 8) return 'var(--accent)'
+  if (n >= 6) return 'var(--warning)'
+  return 'var(--text-muted)'
+}
+
+const SENTIMENT_STYLES: Record<string, { bg: string; color: string }> = {
+  risk:       { bg: 'var(--risk-dim)',    color: 'var(--risk)' },
+  commitment: { bg: 'var(--accent-dim)',  color: 'var(--accent)' },
+  aspiration: { bg: 'var(--success-dim)', color: 'var(--success)' },
+  neutral:    { bg: 'var(--surface-3)',   color: 'var(--text-muted)' },
+}
+
+export default function DocumentCard({
+  document: doc, projectSlug, uploaderEmail, isLast,
+}: {
+  document: Document; projectSlug: string; uploaderEmail?: string; isLast?: boolean
+}) {
   const isProcessing = !doc.ai_processed
   const needsReview = doc.ai_processed && !doc.human_reviewed
   const isSuperseded = !!doc.superseded_by
   const [retrying, setRetrying] = useState(false)
+  const [retryError, setRetryError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const supabase = createClient()
   const router = useRouter()
 
   async function handleDelete(e: React.MouseEvent) {
     e.preventDefault()
+    e.stopPropagation()
     if (!confirm(`Delete "${doc.title ?? doc.file_name}"? This cannot be undone.`)) return
     setDeleting(true)
     await supabase.storage.from('documents').remove([doc.file_path])
@@ -26,124 +52,145 @@ export default function DocumentCard({ document: doc, projectSlug, uploaderEmail
 
   async function handleRetry(e: React.MouseEvent) {
     e.preventDefault()
+    e.stopPropagation()
     setRetrying(true)
-    const response = await fetch('/api/process-document', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ documentId: doc.id }),
-    })
+    setRetryError('')
+    try {
+      const response = await fetch('/api/process-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: doc.id }),
+      })
+      if (response.ok) {
+        router.refresh()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        const errMsg = typeof data.error === 'string' ? data.error : `Error ${response.status}`
+        setRetryError(errMsg)
+      }
+    } catch {
+      setRetryError('Network error')
+    }
     setRetrying(false)
-    if (response.ok) router.refresh()
   }
+
+  const metaParts = [
+    doc.document_date ? new Date(doc.document_date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short' }) : null,
+    doc.source_organization,
+    doc.category,
+    uploaderEmail ? `Uploaded by ${uploaderEmail}` : null,
+  ].filter(Boolean)
+
+  const craapTotal = (doc as any).craap_total
+  const sentStyle = doc.sentiment ? SENTIMENT_STYLES[doc.sentiment] : null
 
   return (
     <div
-      className="doc-card relative rounded-xl p-5 transition-all"
-      style={isSuperseded ? { opacity: 0.5 } : {}}
+      className={isSuperseded ? 'doc-card-superseded' : 'doc-card'}
+      style={{
+        padding: '18px 20px',
+        borderRadius: 0,
+        borderLeft: 'none', borderRight: 'none', borderTop: 'none',
+        borderBottom: isLast ? 'none' : '1px solid var(--border)',
+        display: 'grid',
+        gridTemplateColumns: '1fr auto',
+        gap: 16,
+        alignItems: 'start',
+      }}
     >
-      {/* Action buttons */}
-      <div className="absolute top-3 right-3 flex gap-1.5" onClick={e => e.stopPropagation()}>
-        {isProcessing && (
-          <button
-            onClick={handleRetry}
-            disabled={retrying}
-            className="text-xs px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-            style={{ background: 'var(--blue-dim)', color: 'var(--blue)' }}
-          >
-            {retrying ? 'Retrying...' : 'Retry AI'}
-          </button>
-        )}
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="text-xs px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
-          style={{ background: 'var(--surface-raised)', color: 'var(--text-muted)' }}
-        >
-          {deleting ? '...' : 'Delete'}
-        </button>
-      </div>
-
-      <Link href={`/projects/${projectSlug}/documents/${doc.id}`} className="block pr-24">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                {doc.title ?? doc.file_name}
-              </span>
-
-              {isSuperseded && (
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--surface-raised)', color: 'var(--text-muted)' }}>
-                  Superseded
-                </span>
-              )}
-              {needsReview && (
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>
-                  Needs review
-                </span>
-              )}
-              {isProcessing && (
-                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--blue-dim)', color: 'var(--blue)' }}>
-                  Processing
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3 text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
-              {doc.document_date && <span>{new Date(doc.document_date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short' })}</span>}
-              {doc.source_organization && <span>{doc.source_organization}</span>}
-              {doc.category && <span className="capitalize">{doc.category}</span>}
-              {uploaderEmail && <span>Uploaded by {uploaderEmail}</span>}
-            </div>
-
-            {doc.summary && (
-              <p className="text-sm mt-2 line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{doc.summary}</p>
-            )}
-            {!doc.summary && (doc as any).quick_scan?.headline && (
-              <p className="text-sm mt-2 italic line-clamp-2" style={{ color: 'var(--text-muted)' }}>
-                {(doc as any).quick_scan.headline}
-              </p>
-            )}
-
-            {doc.flags && doc.flags.length > 0 && (
-              <div className="flex gap-1.5 mt-2 flex-wrap">
-                {doc.flags.map(flag => (
-                  <span key={flag} className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>
-                    {flag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col items-end gap-2 shrink-0">
-            {doc.relevance_weight != null && (
-              <div className="text-right">
-                <span className="text-lg font-semibold" style={{ color: doc.relevance_weight >= 8 ? '#f87171' : doc.relevance_weight >= 6 ? '#fbbf24' : 'var(--text-muted)' }}>
-                  {doc.relevance_weight}
-                </span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/10</span>
-              </div>
-            )}
-            {doc.sentiment && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full capitalize"
-                style={{
-                  background: doc.sentiment === 'risk' ? 'rgba(239,68,68,0.15)' : doc.sentiment === 'commitment' ? 'var(--blue-dim)' : doc.sentiment === 'aspiration' ? 'rgba(34,197,94,0.15)' : 'var(--surface-raised)',
-                  color: doc.sentiment === 'risk' ? '#f87171' : doc.sentiment === 'commitment' ? 'var(--blue)' : doc.sentiment === 'aspiration' ? '#4ade80' : 'var(--text-muted)',
-                }}
-              >
-                {doc.sentiment}
-              </span>
-            )}
-            {(doc as any).craap_total != null && (
-              <div className="text-right">
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{(doc as any).craap_total}</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/50</span>
-              </div>
-            )}
-          </div>
+      {/* Left column */}
+      <Link href={`/projects/${projectSlug}/documents/${doc.id}`} style={{ textDecoration: 'none', minWidth: 0 }}>
+        {/* Title + badges */}
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
+            {doc.title ?? doc.file_name}
+          </span>
+          {isSuperseded && (
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--surface-3)', color: 'var(--text-muted)', fontSize: 10 }}>Superseded</span>
+          )}
+          {needsReview && (
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--warning-dim)', color: 'var(--warning)', fontSize: 10 }}>Needs review</span>
+          )}
+          {isProcessing && (
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 10 }}>Processing</span>
+          )}
         </div>
+
+        {/* Metadata line */}
+        {metaParts.length > 0 && (
+          <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>
+            {metaParts.join(' · ')}
+          </p>
+        )}
+
+        {/* Summary */}
+        {doc.summary && (
+          <p className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 600 }}>
+            {doc.summary}
+          </p>
+        )}
+        {!doc.summary && (doc as any).quick_scan?.headline && (
+          <p className="text-xs mt-1 italic line-clamp-2" style={{ color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 600 }}>
+            {(doc as any).quick_scan.headline}
+          </p>
+        )}
+
+        {/* Topics + Flags */}
+        {((doc.topics && doc.topics.length > 0) || (doc.flags && doc.flags.length > 0)) && (
+          <div className="flex gap-1.5 mt-2 flex-wrap">
+            {(doc.topics ?? []).slice(0, 5).map(topic => (
+              <span key={topic} className="doc-tag">{topic}</span>
+            ))}
+            {(doc.flags ?? []).map(flag => (
+              <span key={flag} className="doc-tag doc-tag-risk">{flag}</span>
+            ))}
+          </div>
+        )}
       </Link>
+
+      {/* Right column */}
+      <div className="flex flex-col items-end gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+        {doc.relevance_weight != null && (
+          <div className="text-right">
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Salience</p>
+            <span style={{ fontFamily: 'var(--font-space-mono)', color: salienceColor(doc.relevance_weight) }}>
+              <span style={{ fontSize: 22, fontWeight: 700 }}>{doc.relevance_weight}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>/10</span>
+            </span>
+          </div>
+        )}
+
+        {sentStyle && (
+          <span className="text-xs px-2 py-0.5 rounded capitalize" style={{ background: sentStyle.bg, color: sentStyle.color, fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            {doc.sentiment}
+          </span>
+        )}
+
+        {craapTotal != null && (
+          <div className="text-right">
+            <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>PARCA</p>
+            <span style={{ fontFamily: 'var(--font-space-mono)', color: parcaColor(craapTotal) }}>
+              <span style={{ fontSize: 22, fontWeight: 700 }}>{craapTotal}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>/50</span>
+            </span>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex gap-1.5 mt-1">
+          {isProcessing && (
+            <button onClick={handleRetry} disabled={retrying} className="dark-btn-danger px-2.5" style={{ height: 24, fontSize: 11 }}>
+              {retrying ? 'Processing…' : 'Retry AI'}
+            </button>
+          )}
+          <button onClick={handleDelete} disabled={deleting} className="dark-btn-danger px-2.5" style={{ height: 24, fontSize: 11 }}>
+            {deleting ? '...' : 'Delete'}
+          </button>
+        </div>
+        {retryError && (
+          <p className="text-xs mt-1 max-w-[160px] text-right" style={{ color: 'var(--risk)' }}>{retryError}</p>
+        )}
+      </div>
     </div>
   )
 }

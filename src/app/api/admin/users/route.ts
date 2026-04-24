@@ -37,7 +37,7 @@ export async function GET() {
   const membershipMap: Record<string, { id: string; name: string; slug: string }[]> = {}
   for (const m of memberships ?? []) {
     if (!membershipMap[m.user_id]) membershipMap[m.user_id] = []
-    if (m.projects) membershipMap[m.user_id].push(m.projects as { id: string; name: string; slug: string })
+    if (m.projects) membershipMap[m.user_id].push(m.projects as unknown as { id: string; name: string; slug: string })
   }
 
   const result = users.map(u => ({

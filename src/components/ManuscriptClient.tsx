@@ -152,19 +152,19 @@ export default function ManuscriptClient({ project, processedCount, initialManus
         </div>
       </div>
 
-      {/* CRAAP confirmation modal */}
+      {/* PARCA confirmation modal */}
       {showConfirm && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
           <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Before you generate</h3>
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-              The manuscript is built on your CRAAP scores. Higher-scored documents will carry more weight in the synthesis. Please confirm you've completed this work before proceeding.
+              The manuscript is built on your PARCA scores. Higher-scored documents will carry more weight in the synthesis. Please confirm you've completed this work before proceeding.
             </p>
             <ul className="space-y-3 mb-6">
               {[
                 'All documents have been AI-processed',
-                'CRAAP scores have been reviewed and adjusted for each document',
-                'Project-level CRAAP dimension weights reflect this engagement\'s priorities',
+                'PARCA scores have been reviewed and adjusted for each document',
+                'Project-level PARCA dimension weights reflect this engagement\'s priorities',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ border: '2px solid var(--border)', color: 'var(--text-muted)' }}>{i + 1}</span>

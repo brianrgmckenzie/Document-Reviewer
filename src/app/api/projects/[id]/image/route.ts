@@ -1,6 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { requireProjectAccess } from '@/lib/requireProjectAccess'
+
+async function getUserRole(userId: string): Promise<string | null> {
+  const admin = createAdminClient()
+  const { data } = await admin.from('user_roles').select('role').eq('user_id', userId).single()
+  return data?.role ?? null
+}
 
 export async function POST(
   req: Request,
@@ -11,6 +18,10 @@ export async function POST(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const role = await getUserRole(user.id)
+  const allowed = await requireProjectAccess(user.id, id, role)
+  if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const formData = await req.formData()
   const file = formData.get('file') as File | null
@@ -42,7 +53,7 @@ export async function POST(
 }
 
 export async function DELETE(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
@@ -50,6 +61,10 @@ export async function DELETE(
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const role = await getUserRole(user.id)
+  const allowed = await requireProjectAccess(user.id, id, role)
+  if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const admin = createAdminClient()
   await admin.storage.from('project-images').remove([`${id}/cover.jpg`])

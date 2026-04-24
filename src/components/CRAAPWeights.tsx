@@ -5,11 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 const DIMENSIONS = [
-  { key: 'currency', label: 'Currency' },
-  { key: 'relevance', label: 'Relevance' },
-  { key: 'authority', label: 'Authority' },
+  { key: 'purpose',      label: 'Purpose' },
+  { key: 'authority',    label: 'Authority' },
+  { key: 'relevance',    label: 'Relevance' },
   { key: 'completeness', label: 'Completeness' },
-  { key: 'purpose', label: 'Purpose' },
+  { key: 'currency',     label: 'Accuracy' },
 ]
 
 interface Props {
@@ -40,13 +40,13 @@ export default function CRAAPWeights({ projectId, initialWeights }: Props) {
         onClick={() => setOpen(true)}
         className="px-4 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
       >
-        CRAAP Weights
+        PARCA Weights
       </button>
 
       {open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">CRAAP Dimension Weights</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">PARCA Dimension Weights</h3>
             <p className="text-sm text-gray-500 mb-6">
               Adjust how much each dimension contributes to the weighted total score. Default is 1.0 for each. Use 2.0 to double the impact of a dimension.
             </p>

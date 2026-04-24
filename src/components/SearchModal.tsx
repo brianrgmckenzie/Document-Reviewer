@@ -161,7 +161,7 @@ export default function SearchModal({ projectId, projectSlug, suppressedWords: i
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       {doc.craap_total != null && (
-                        <span className="text-xs text-gray-400">{doc.craap_total}/50</span>
+                        <span className="text-xs text-gray-400">PARCA {doc.craap_total}/50</span>
                       )}
                       {doc.sentiment && (
                         <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${SENTIMENT_COLORS[doc.sentiment] ?? 'bg-gray-50 text-gray-500'}`}>

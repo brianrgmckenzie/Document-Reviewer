@@ -1,4 +1,5 @@
 import PDFParser from 'pdf2json'
+import mammoth from 'mammoth'
 
 export async function extractTextFromBuffer(buffer: Buffer, fileName: string): Promise<string> {
   const ext = fileName.split('.').pop()?.toLowerCase()
@@ -29,7 +30,18 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
     })
   }
 
-  // Plain text files
+  if (ext === 'docx' || ext === 'doc') {
+    try {
+      const result = await mammoth.extractRawText({ buffer })
+      const cleaned = result.value.replace(/\r\n|\r/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
+      console.log(`DOCX extracted ${cleaned.length} characters from ${fileName}`)
+      return cleaned || fileName
+    } catch {
+      return fileName
+    }
+  }
+
+  // Plain text / CSV / other
   try {
     return buffer.toString('utf-8')
   } catch {

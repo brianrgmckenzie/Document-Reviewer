@@ -76,29 +76,29 @@ Produce a JSON assessment with the following fields:
   // 1 = peripheral/low value for intake purposes
 
   "craap_currency": <1-10 integer>,
-  // How current/timely is this document?
-  // 10 = very recent and directly relevant to current state
-  // 1 = very old with little current relevance
+  // Accuracy: The reliability and truthfulness of the content.
+  // 10 = claims are well-supported, internally consistent, and verifiable against authoritative sources
+  // 1 = unverified, anecdotal, self-reported without evidence, or contains apparent inaccuracies
 
   "craap_relevance": <1-10 integer>,
-  // How relevant is this document to understanding this organization's situation?
-  // 10 = directly central to the engagement scope
-  // 1 = tangential or peripheral
+  // Relevance: The importance of the information for the engagement's specific needs.
+  // 10 = directly answers key questions and fits the engagement topic
+  // 1 = tangential or peripheral to the engagement scope
 
   "craap_authority": <1-10 integer>,
-  // How authoritative is the source?
-  // 10 = external auditor, legal authority, government body
-  // 1 = informal internal note, unverified correspondence
+  // Authority: The source of the information — author credentials and publisher reputation.
+  // 10 = external auditor, legal authority, government body, credentialed expert
+  // 1 = informal internal note, unknown author, unverified correspondence
 
   "craap_completeness": <1-10 integer>,
-  // How complete and whole is this document?
-  // 10 = comprehensive, signed, final version
-  // 1 = draft, partial, or significantly redacted
+  // Currency: The timeliness of the information — publication date and whether it is up to date.
+  // 10 = recent, current, and reflects the latest available information
+  // 1 = outdated, superseded, or no date determinable
 
   "craap_purpose": <1-10 integer>,
-  // How clear and appropriate is the document's purpose for informing this engagement?
-  // 10 = directly informs strategic or governance decisions
-  // 1 = unclear purpose or minimal engagement value
+  // Purpose: The reason the information exists — to inform, teach, sell, entertain, or persuade.
+  // 10 = clearly informational or educational, objective, transparently sourced
+  // 1 = promotional, persuasive, or agenda-driven with undisclosed bias
 
   "summary": "2-4 sentence factual summary of what this document is and what it establishes about the organization",
 
@@ -142,21 +142,21 @@ Produce a JSON assessment with the following fields:
 Return ONLY valid JSON. No explanation, no markdown, just the JSON object.`
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-6',
+    model: 'claude-opus-4-7',
     max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
 
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  const raw = jsonMatch ? jsonMatch[0] : text
+  // Strip // line comments that Claude sometimes echoes from the prompt template
+  const cleaned = raw.replace(/\/\/[^\n]*/g, '')
+
   try {
-    const assessment = JSON.parse(text) as AIDocumentAssessment
-    return assessment
+    return JSON.parse(cleaned) as AIDocumentAssessment
   } catch {
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as AIDocumentAssessment
-    }
     throw new Error('Failed to parse AI assessment response')
   }
 }
