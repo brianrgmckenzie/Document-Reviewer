@@ -47,7 +47,7 @@ create table documents (
   category text, -- e.g. 'financial', 'governance', 'property', 'strategic', 'correspondence'
   relevance_weight integer check (relevance_weight between 1 and 10), -- AI-assigned 1-10
   summary text, -- AI-generated summary
-  key_extracts text[], -- array of key points
+  key_extracts jsonb, -- array of {quote, significance} objects
   topics text[], -- topic tags
   named_entities jsonb, -- {people: [], orgs: [], properties: [], funders: []}
   key_numbers jsonb, -- {amounts: [], dates: [], units: []}

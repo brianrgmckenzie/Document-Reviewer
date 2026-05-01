@@ -21,6 +21,24 @@ const TIER_LABELS: Record<number, string> = {
   3: 'Tier 3 — Strategic',      4: 'Tier 4 — Operational', 5: 'Tier 5 — Historical',
 }
 
+function extractExecutiveSummary(raw: string | null): string | null {
+  if (!raw) return null
+  const isHtml = /<[a-z][\s\S]*>/i.test(raw)
+  if (isHtml) {
+    // Pull text nodes between first <h2> and second <h2>
+    const after = raw.replace(/[\s\S]*?<h2[^>]*>.*?<\/h2>/i, '')
+    const before = after.replace(/<h2[\s\S]*/i, '')
+    const text = before.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    return text.slice(0, 480) || null
+  }
+  // Markdown fallback: lines after the first ## heading that aren't themselves headings
+  const lines = raw.split('\n')
+  const start = lines.findIndex(l => /^##\s/.test(l))
+  if (start === -1) return null
+  const body = lines.slice(start + 1).filter(l => l.trim() && !/^#/.test(l))
+  return body.slice(0, 4).join(' ').trim().slice(0, 480) || null
+}
+
 function parcaColor(total: number) {
   const pct = total / 50
   if (pct >= 0.7) return 'var(--success)'
@@ -74,6 +92,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
     uploaderEmail = uploader?.email ?? null
   }
 
+  const executiveSummary = extractExecutiveSummary(document.summary)
+
   const metaParts = [
     document.document_date ? new Date(document.document_date).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : null,
     document.source_organization,
@@ -110,8 +130,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
             {metaParts.length > 0 && (
               <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>{metaParts.join(' · ')}</p>
             )}
-            {document.summary && (
-              <p className="text-sm mb-3" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>{document.summary}</p>
+            {executiveSummary && (
+              <p className="text-sm mb-3" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>{executiveSummary}</p>
             )}
             {document.topics && document.topics.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-3">
@@ -185,8 +205,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
           {metaParts.length > 0 && (
             <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>{metaParts.join(' · ')}</p>
           )}
-          {document.summary && (
-            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>{document.summary}</p>
+          {executiveSummary && (
+            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>{executiveSummary}</p>
           )}
           {document.topics && document.topics.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-1">

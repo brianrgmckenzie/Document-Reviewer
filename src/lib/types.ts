@@ -69,7 +69,7 @@ export interface Document {
   category: DocumentCategory | null
   relevance_weight: number | null
   summary: string | null
-  key_extracts: string[] | null
+  key_extracts: { quote: string; significance: string }[] | null
   topics: string[] | null
   named_entities: {
     people: string[]
@@ -86,6 +86,7 @@ export interface Document {
   flags: string[] | null
   superseded_by: string | null
   supersedes: string | null
+  extracted_text: string | null
   ai_processed: boolean
   ai_processed_at: string | null
   human_reviewed: boolean

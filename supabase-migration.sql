@@ -16,6 +16,7 @@ alter table documents add column if not exists chief_concerns    text[];
 alter table documents add column if not exists consultant_notes  text[];
 alter table documents add column if not exists quick_scan        jsonb;
 alter table documents add column if not exists quick_scanned_at  timestamptz;
+alter table documents add column if not exists extracted_text    text;
 
 -- ── projects: status, image, manuscript, weights ──────────────────────────────
 alter table projects add column if not exists status                   text default 'intake';
@@ -95,3 +96,8 @@ create policy if not exists "Users can read own profile"
 create policy if not exists "Users can update own profile"
   on user_profiles for update
   using (auth.uid() = user_id);
+
+-- ── key_extracts: text[] → jsonb (structured quote + significance objects) ───
+-- Converts existing string arrays to JSONB. Old string values are preserved
+-- as-is; new AI processing will write {quote, significance} objects.
+alter table documents alter column key_extracts type jsonb using to_jsonb(key_extracts);

@@ -77,10 +77,11 @@ Return JSON only:
       if (match) scan = JSON.parse(match[0])
     }
 
-    await supabase.from('documents').update({
+    await admin.from('documents').update({
       title: scan.title as string ?? null,
       quick_scan: scan,
       quick_scanned_at: new Date().toISOString(),
+      extracted_text: textContent,
     }).eq('id', documentId)
 
     return NextResponse.json({ success: true, scan })

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   const { data: doc, error: docError } = await admin
     .from('documents')
-    .select('file_path, file_name, project_id')
+    .select('file_path, file_name, project_id, extracted_text')
     .eq('id', documentId)
     .single()
 
@@ -37,14 +37,20 @@ export async function POST(request: NextRequest) {
   const allowed = await requireProjectAccess(user.id, doc.project_id, role)
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { data: fileData, error: downloadError } = await supabase.storage
-    .from('documents')
-    .download(doc.file_path)
-  if (downloadError || !fileData) {
-    return NextResponse.json({ error: 'Failed to download file' }, { status: 500 })
+  let textContent: string
+  const freshlyExtracted = !doc.extracted_text
+  if (doc.extracted_text) {
+    textContent = doc.extracted_text
+  } else {
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('documents')
+      .download(doc.file_path)
+    if (downloadError || !fileData) {
+      return NextResponse.json({ error: 'Failed to download file' }, { status: 500 })
+    }
+    const buffer = Buffer.from(await fileData.arrayBuffer())
+    textContent = await extractTextFromBuffer(buffer, doc.file_name)
   }
-  const buffer = Buffer.from(await fileData.arrayBuffer())
-  const textContent = await extractTextFromBuffer(buffer, doc.file_name)
 
   try {
     const assessment = await processDocument(textContent, doc.file_name)
@@ -62,7 +68,7 @@ export async function POST(request: NextRequest) {
       (assessment.craap_completeness ?? 5) +
       (assessment.craap_purpose ?? 5)
 
-    const { error } = await supabase
+    const { error } = await admin
       .from('documents')
       .update({
         title: assessment.title,
@@ -79,9 +85,7 @@ export async function POST(request: NextRequest) {
         craap_completeness: assessment.craap_completeness ?? 5,
         craap_purpose: assessment.craap_purpose ?? 5,
         craap_total: craapTotal,
-        summary: assessment.summary,
-        chief_concerns: assessment.chief_concerns,
-        consultant_notes: assessment.consultant_notes,
+        summary: assessment.briefing,
         key_extracts: assessment.key_extracts,
         topics: assessment.topics,
         named_entities: assessment.named_entities,
@@ -90,6 +94,7 @@ export async function POST(request: NextRequest) {
         flags: assessment.flags,
         ai_processed: true,
         ai_processed_at: new Date().toISOString(),
+        ...(freshlyExtracted ? { extracted_text: textContent } : {}),
       })
       .eq('id', documentId)
 
@@ -97,7 +102,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, assessment })
   } catch (err) {
-    console.error('Document processing error:', err)
-    return NextResponse.json({ error: 'Document processing failed' }, { status: 500 })
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('Document processing error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

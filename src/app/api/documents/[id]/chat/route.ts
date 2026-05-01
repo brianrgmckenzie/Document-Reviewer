@@ -72,18 +72,25 @@ export async function POST(
     validated.push({ role: (msg as any).role, content: (msg as any).content })
   }
 
-  const { data: fileData } = await supabase.storage.from('documents').download(doc.file_path)
   let documentText: string
-  if (fileData) {
-    const buffer = Buffer.from(await fileData.arrayBuffer())
-    documentText = await extractTextFromBuffer(buffer, doc.file_name)
+  if (doc.extracted_text) {
+    documentText = doc.extracted_text
   } else {
-    documentText = [
-      doc.summary,
-      ...(doc.key_extracts ?? []),
-      ...(doc.chief_concerns ?? []),
-      ...(doc.consultant_notes ?? []),
-    ].filter(Boolean).join('\n\n')
+    const { data: fileData } = await supabase.storage.from('documents').download(doc.file_path)
+    if (fileData) {
+      const buffer = Buffer.from(await fileData.arrayBuffer())
+      documentText = await extractTextFromBuffer(buffer, doc.file_name)
+      await admin.from('documents').update({ extracted_text: documentText }).eq('id', id)
+    } else {
+      documentText = [
+        doc.summary,
+        ...(doc.key_extracts ?? []).map((e: unknown) =>
+          typeof e === 'string' ? e : `"${(e as any).quote}" — ${(e as any).significance}`
+        ),
+        ...(doc.chief_concerns ?? []),
+        ...(doc.consultant_notes ?? []),
+      ].filter(Boolean).join('\n\n')
+    }
   }
 
   const systemPrompt = `You are a document research assistant. Your only source of knowledge is the document provided below. You have no awareness of the current date, recent news, or any information outside this document.
@@ -97,12 +104,12 @@ Rules:
 
 DOCUMENT: ${doc.title ?? doc.file_name}
 
-${documentText.slice(0, 20000)}`
+${documentText.slice(0, 80000)}`
 
   const stream = anthropic.messages.stream({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: systemPrompt,
+    max_tokens: 2048,
+    system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
     messages: validated,
   })
 

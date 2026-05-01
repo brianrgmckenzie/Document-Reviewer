@@ -8,6 +8,12 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
 const PARCA_KEYS = ['currency', 'relevance', 'authority', 'completeness', 'purpose'] as const
 
+function formatExtract(e: unknown): string {
+  if (typeof e === 'string') return `"${e}"`
+  const ex = e as { quote?: string; significance?: string }
+  return `"${ex.quote ?? ''}" — ${ex.significance ?? ''}`
+}
+
 function computeWeightedPARCA(doc: any, weights: Record<string, number>): number {
   return PARCA_KEYS.reduce((sum, key) => {
     const score = doc[`craap_${key}`] ?? 5
@@ -102,7 +108,8 @@ Sentiment: ${doc.sentiment ?? 'neutral'}
 Summary: ${doc.summary ?? 'No summary available'}
 Chief Concerns: ${(doc.chief_concerns ?? []).join(' | ') || 'None identified'}
 Consultant Notes: ${(doc.consultant_notes ?? []).join(' | ') || 'None'}
-Key Extracts: ${(doc.key_extracts ?? []).slice(0, 5).join(' | ') || 'None'}
+Key Extracts:
+${(doc.key_extracts ?? []).slice(0, 5).map(formatExtract).join('\n') || 'None'}
 Key Numbers: ${[...(doc.key_numbers?.amounts ?? []), ...(doc.key_numbers?.units ?? [])].join(' | ') || 'None'}
 Flags: ${(doc.flags ?? []).join(', ') || 'None'}
 ---`

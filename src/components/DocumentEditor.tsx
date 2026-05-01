@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import BriefingEditor from '@/components/BriefingEditor'
 import {
   AUTHORITY_TIER_LABELS,
   AUTHORITY_TIER_DESCRIPTIONS,
@@ -63,10 +64,10 @@ export default function DocumentEditor({
     authority_tier:      doc.authority_tier ?? 4,
     category:            doc.category ?? 'other',
     relevance_weight:    doc.relevance_weight ?? 5,
-    summary:             doc.summary ?? '',
-    chief_concerns:      ((doc as any).chief_concerns ?? []).join('\n'),
-    consultant_notes:    ((doc as any).consultant_notes ?? []).join('\n'),
-    key_extracts:        (doc.key_extracts ?? []).join('\n'),
+    briefing:            doc.summary ?? '',
+    key_extracts:        (doc.key_extracts ?? []).map(e =>
+      typeof e === 'string' ? { quote: e, significance: '' } : e
+    ) as { quote: string; significance: string }[],
     topics:              (doc.topics ?? []).join(', '),
     sentiment:           doc.sentiment ?? 'neutral',
     flags:               (doc.flags ?? []).join(', '),
@@ -104,9 +105,9 @@ export default function DocumentEditor({
         </div>
         {saveError && <p className="text-sm px-4 py-3 rounded-lg" style={{ background: 'var(--risk-dim)', color: 'var(--risk)' }}>{saveError}</p>}
         {doc.summary && (
-          <div className="dark-card p-6" style={{ borderRadius: 12 }}>
-            <h3 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>Summary</h3>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.75 }}>{doc.summary}</p>
+          <div className="dark-card" style={{ borderRadius: 12, overflow: 'hidden' }}>
+            <p className="text-xs font-semibold uppercase tracking-wider px-6 pt-5 pb-3" style={{ color: 'var(--text-muted)' }}>Briefing Document</p>
+            <BriefingEditor content={doc.summary} onChange={() => {}} readOnly />
           </div>
         )}
         <div className="dark-card p-6" style={{ borderRadius: 12 }}>
@@ -142,10 +143,8 @@ export default function DocumentEditor({
       craap_currency: craap.craap_currency, craap_relevance: craap.craap_relevance,
       craap_authority: craap.craap_authority, craap_completeness: craap.craap_completeness,
       craap_purpose: craap.craap_purpose, craap_total: craapTotal,
-      summary: form.summary || null,
-      chief_concerns: form.chief_concerns.split('\n').filter(Boolean),
-      consultant_notes: form.consultant_notes.split('\n').filter(Boolean),
-      key_extracts: form.key_extracts.split('\n').filter(Boolean),
+      summary: form.briefing || null,
+      key_extracts: form.key_extracts.filter(e => e.quote.trim()),
       topics: form.topics.split(',').map(t => t.trim()).filter(Boolean),
       sentiment: form.sentiment as Sentiment,
       flags: form.flags.split(',').map(f => f.trim()).filter(Boolean),
@@ -172,8 +171,10 @@ export default function DocumentEditor({
       {/* Status bar */}
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-2 flex-wrap">
-          {doc.ai_processed ? (
+          {doc.ai_processed && doc.extracted_text ? (
             <span className="text-xs px-2.5 py-1 rounded" style={{ background: 'var(--success-dim)', color: 'var(--success)' }}>AI Assessed</span>
+          ) : doc.ai_processed ? (
+            <span className="text-xs px-2.5 py-1 rounded" title="Processed before full-text extraction was enabled. Retry AI for a complete assessment." style={{ background: 'var(--warning-dim)', color: 'var(--warning)', cursor: 'help' }}>Partial analysis</span>
           ) : (
             <span className="text-xs px-2.5 py-1 rounded" style={{ background: 'var(--surface-3)', color: 'var(--text-muted)' }}>Processing…</span>
           )}
@@ -318,64 +319,62 @@ export default function DocumentEditor({
               </div>
             </div>
 
-            {/* Summary */}
+            {/* Briefing Document */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Summary</label>
-              <div className="rounded-xl p-4" style={{ background: 'rgba(100,120,180,0.05)', border: '1px solid rgba(180,190,220,0.18)' }}>
-                <textarea value={form.summary} onChange={e => setForm({ ...form, summary: e.target.value })} rows={4}
-                  className="dark-textarea w-full text-sm" style={{ background: 'transparent', border: 'none', outline: 'none', lineHeight: 1.75 }} />
-              </div>
-            </div>
-
-            {/* Key Findings */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                Key Findings <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(one per line)</span>
-              </label>
-              {form.chief_concerns ? (
-                <div className="space-y-1.5 mb-2">
-                  {form.chief_concerns.split('\n').filter(Boolean).map((line: string, i: number) => (
-                    <div key={i} className="flex items-start gap-3 px-4 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.50)', border: '1px solid rgba(180,190,220,0.18)' }}>
-                      <span style={{ fontFamily: 'var(--font-space-mono)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, minWidth: 20, paddingTop: 1 }}>
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <span className="text-sm" style={{ color: 'var(--text-secondary)', lineHeight: 1.6 }}>{line}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <textarea value={form.chief_concerns} onChange={e => setForm({ ...form, chief_concerns: e.target.value })} rows={4}
-                className="dark-input w-full px-3 py-2 rounded-lg text-sm" style={{ resize: 'vertical' }}
-                placeholder="Enter key findings, one per line…" />
-            </div>
-
-            {/* Identified Gaps */}
-            <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                Identified Gaps <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(one per line)</span>
-              </label>
-              {form.consultant_notes ? (
-                <div className="space-y-1.5 mb-2">
-                  {form.consultant_notes.split('\n').filter(Boolean).map((line: string, i: number) => (
-                    <div key={i} className="flex items-start gap-2.5 px-4 py-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.50)', border: '1px solid rgba(180,190,220,0.18)' }}>
-                      <span style={{ color: 'var(--warning)', fontSize: 13, paddingTop: 1 }}>⚠</span>
-                      <span className="text-sm" style={{ color: 'var(--warning)', lineHeight: 1.6 }}>{line}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <textarea value={form.consultant_notes} onChange={e => setForm({ ...form, consultant_notes: e.target.value })} rows={4}
-                className="dark-input w-full px-3 py-2 rounded-lg text-sm" style={{ resize: 'vertical' }}
-                placeholder="Enter identified gaps, one per line…" />
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Briefing Document</label>
+              <BriefingEditor
+                content={form.briefing}
+                onChange={html => setForm(f => ({ ...f, briefing: html }))}
+              />
             </div>
 
             {/* Key Extracts */}
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>
-                Key Extracts <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(one per line)</span>
-              </label>
-              <textarea value={form.key_extracts} onChange={e => setForm({ ...form, key_extracts: e.target.value })} rows={5}
-                className="dark-input w-full px-3 py-2 rounded-lg text-sm" style={{ resize: 'vertical', fontFamily: 'var(--font-space-mono)' }} />
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Key Extracts</label>
+                <button type="button"
+                  onClick={() => setForm(f => ({ ...f, key_extracts: [...f.key_extracts, { quote: '', significance: '' }] }))}
+                  className="text-xs px-3 py-1 rounded-md border transition-all"
+                  style={{ color: 'var(--accent)', borderColor: 'rgba(79,124,255,0.35)', background: 'var(--accent-dim)' }}>
+                  + Add Extract
+                </button>
+              </div>
+              <div className="space-y-3">
+                {form.key_extracts.length === 0 && (
+                  <p className="text-xs py-3 text-center rounded-lg" style={{ color: 'var(--text-muted)', background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                    No extracts yet — run AI processing or add one manually.
+                  </p>
+                )}
+                {form.key_extracts.map((extract, i) => (
+                  <div key={i} className="rounded-xl p-4" style={{ background: 'rgba(79,124,255,0.05)', border: '1px solid rgba(79,124,255,0.15)' }}>
+                    <div className="flex items-start gap-2 mb-2">
+                      <span style={{ fontFamily: 'var(--font-space-mono)', fontSize: 10, color: 'var(--accent)', fontWeight: 700, minWidth: 20, paddingTop: 3 }}>
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <textarea
+                        value={extract.quote}
+                        onChange={e => setForm(f => ({ ...f, key_extracts: f.key_extracts.map((ex, j) => j === i ? { ...ex, quote: e.target.value } : ex) }))}
+                        rows={2}
+                        placeholder="Verbatim quote from the document…"
+                        className="dark-textarea w-full text-sm"
+                        style={{ background: 'transparent', border: 'none', outline: 'none', lineHeight: 1.7, fontFamily: 'var(--font-space-mono)', fontSize: 12, resize: 'vertical' }}
+                      />
+                      <button type="button"
+                        onClick={() => setForm(f => ({ ...f, key_extracts: f.key_extracts.filter((_, j) => j !== i) }))}
+                        style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, lineHeight: 1, paddingTop: 2 }}>
+                        ×
+                      </button>
+                    </div>
+                    <input
+                      value={extract.significance}
+                      onChange={e => setForm(f => ({ ...f, key_extracts: f.key_extracts.map((ex, j) => j === i ? { ...ex, significance: e.target.value } : ex) }))}
+                      placeholder="Why this matters for the engagement…"
+                      className="dark-input w-full px-3 py-1.5 rounded-lg text-xs"
+                      style={{ marginLeft: 22 }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Topics + Flags */}

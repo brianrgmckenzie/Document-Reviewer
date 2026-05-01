@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
         (doc.topics ?? []).join(' ').toLowerCase(),
         (doc.chief_concerns ?? []).join(' ').toLowerCase(),
         (doc.consultant_notes ?? []).join(' ').toLowerCase(),
-        (doc.key_extracts ?? []).join(' ').toLowerCase(),
+        (doc.key_extracts ?? []).map((e: unknown) =>
+          typeof e === 'string' ? e : `${(e as any).quote} ${(e as any).significance}`
+        ).join(' ').toLowerCase(),
         (doc.title ?? doc.file_name ?? '').toLowerCase(),
       ]
 

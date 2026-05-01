@@ -32,6 +32,7 @@ export default function DocumentCard({
   document: Document; projectSlug: string; uploaderEmail?: string; isLast?: boolean
 }) {
   const isProcessing = !doc.ai_processed
+  const isPartial = doc.ai_processed && !doc.extracted_text
   const needsReview = doc.ai_processed && !doc.human_reviewed
   const isSuperseded = !!doc.superseded_by
   const [retrying, setRetrying] = useState(false)
@@ -114,6 +115,9 @@ export default function DocumentCard({
           {isProcessing && (
             <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 10 }}>Processing</span>
           )}
+          {isPartial && (
+            <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'var(--warning-dim)', color: 'var(--warning)', fontSize: 10 }}>Partial analysis</span>
+          )}
         </div>
 
         {/* Metadata line */}
@@ -178,7 +182,7 @@ export default function DocumentCard({
 
         {/* Action buttons */}
         <div className="flex gap-1.5 mt-1">
-          {isProcessing && (
+          {(isProcessing || isPartial) && (
             <button onClick={handleRetry} disabled={retrying} className="dark-btn-danger px-2.5" style={{ height: 24, fontSize: 11 }}>
               {retrying ? 'Processing…' : 'Retry AI'}
             </button>

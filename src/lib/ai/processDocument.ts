@@ -19,10 +19,8 @@ export interface AIDocumentAssessment {
   craap_authority: number
   craap_completeness: number
   craap_purpose: number
-  summary: string
-  chief_concerns: string[]
-  consultant_notes: string[]
-  key_extracts: string[]
+  briefing: string
+  key_extracts: { quote: string; significance: string }[]
   topics: string[]
   named_entities: {
     people: string[]
@@ -50,7 +48,27 @@ You are conducting a document intake review. Your job is to read this document t
 DOCUMENT FILENAME: ${fileName}
 
 DOCUMENT CONTENT:
-${textContent.slice(0, 15000)}
+${textContent.slice(0, 80000)}
+
+BRIEFING FORMAT (for the "briefing" field):
+Generate a comprehensive briefing document in Markdown. It must be thorough enough that a consultant does not need to read the original document. Use this structure:
+
+## Executive Summary
+2-3 paragraphs. Most critical takeaways upfront — what this document is, who produced it, what it establishes, and what decision-makers most need to know.
+
+## [Theme heading — specific and descriptive]
+Detailed examination with supporting evidence. Cite the document directly using verbatim quotes:
+> "exact quote from document" — [author or context]
+Follow each quote with a sentence of analysis explaining its significance. Use bullet points for sub-points.
+
+[Repeat for each major theme — typically 3-6 sections]
+
+## Consultant Assessment
+What this document implies beyond what it literally says. Flag specific concerns, risks, or unresolved tensions with evidence. Note what patterns it suggests, what questions an engagement team should probe. Be direct and incisive — not vague.
+
+Tone: objective and incisive throughout. Every claim grounded in the document. Quotes verbatim.
+
+---
 
 Produce a JSON assessment with the following fields:
 
@@ -100,19 +118,15 @@ Produce a JSON assessment with the following fields:
   // 10 = clearly informational or educational, objective, transparently sourced
   // 1 = promotional, persuasive, or agenda-driven with undisclosed bias
 
-  "summary": "2-4 sentence factual summary of what this document is and what it establishes about the organization",
-
-  "chief_concerns": [
-    "Array of 3-6 specific concerns, risks, red flags, or unresolved tensions a consultant would flag after reading this document. Be direct and specific — not vague. Examples: 'Governance structure gives single board member veto power over all financial decisions', 'No succession plan mentioned despite aging leadership', 'Zoning approval contingent on community consultation that has not occurred'"
-  ],
-
-  "consultant_notes": [
-    "Array of 3-5 interpretive observations — what this document implies about the organization beyond what it literally says. Think: what patterns does this suggest, what questions does it raise, what does it predict about where this org is heading? Examples: 'The gap between the 2019 vision and 2023 actuals suggests either scope creep or capacity issues — worth probing', 'Tone shifts mid-document from confident to hedging, which may indicate internal disagreement at time of writing'"
-  ],
+  "briefing": "<see BRIEFING FORMAT instructions above — return as a JSON string with \\n for newlines>",
 
   "key_extracts": [
-    "Array of 3-8 verbatim or near-verbatim quotes of the most important statements, figures, or commitments from the document"
+    {
+      "quote": "Verbatim or near-verbatim quote from the document — the exact words, not a paraphrase",
+      "significance": "One sentence: why this specific quote matters for the engagement — what it reveals, commits to, or warns about"
+    }
   ],
+  // Include 3-8 extracts. Prioritise quotes that are specific, consequential, and not already obvious from context.
 
   "topics": ["array", "of", "topic", "tags"],
 
@@ -142,8 +156,8 @@ Produce a JSON assessment with the following fields:
 Return ONLY valid JSON. No explanation, no markdown, just the JSON object.`
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
-    max_tokens: 3000,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 16000,
     messages: [{ role: 'user', content: prompt }],
   })
 
