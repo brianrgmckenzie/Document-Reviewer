@@ -1,31 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { loginAction } from './actions'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const supabase = createClient()
+  const [isPending, startTransition] = useTransition()
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
     setError('')
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-    } else {
-      router.refresh()
-      router.push('/dashboard')
-    }
+    startTransition(async () => {
+      const err = await loginAction(email, password)
+      if (err) setError(err)
+    })
   }
 
   return (
@@ -53,8 +43,8 @@ export default function LoginPage() {
             {error && (
               <p className="text-sm px-4 py-2.5 rounded-lg" style={{ color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)' }}>{error}</p>
             )}
-            <button type="submit" disabled={loading} className="login-btn w-full py-2.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50">
-              {loading ? 'Signing in...' : 'Sign in'}
+            <button type="submit" disabled={isPending} className="login-btn w-full py-2.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50">
+              {isPending ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
         </div>
