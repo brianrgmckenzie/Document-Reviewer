@@ -1,6 +1,10 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let _resend: Resend | null = null
+function getResend() {
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY)
+  return _resend
+}
 
 const FROM = 'Reframe Concierge <admin@reframeconcepts.com>'
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
@@ -78,7 +82,7 @@ export async function sendWelcomeClient({
     ? `Your document review workspace is ready — ${projectName}`
     : 'Your document review workspace is ready'
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject,
@@ -112,7 +116,7 @@ export async function sendWelcomeStaff({
 }) {
   const roleLabel = role === 'super_admin' ? 'Super Admin' : 'Project Admin'
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: 'Your Reframe Concepts account is ready',
@@ -161,7 +165,7 @@ export async function sendStatusChange({
 
   const projectUrl = `${APP_URL}/projects/${projectSlug}`
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `${projectName} — ${copy.label}`,
@@ -192,7 +196,7 @@ export async function sendUploadNotification({
 }) {
   if (to.length === 0) return
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `New document uploaded — ${projectName}`,
@@ -230,7 +234,7 @@ export async function sendCommentNotification({
 
   const truncated = commentBody.length > 200 ? commentBody.slice(0, 197) + '…' : commentBody
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: `New comment on ${documentTitle} — ${projectName}`,
