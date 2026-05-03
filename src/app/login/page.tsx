@@ -1,21 +1,33 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { loginAction } from './actions'
+import { useState } from 'react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [isPending, startTransition] = useTransition()
+  const [loading, setLoading] = useState(false)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    setLoading(true)
     setError('')
-    startTransition(async () => {
-      const err = await loginAction(email, password)
-      if (err) setError(err)
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     })
+
+    if (!res.ok) {
+      const data = await res.json()
+      setError(data.error ?? 'Login failed')
+      setLoading(false)
+      return
+    }
+
+    // Hard redirect so the browser sends the new auth cookies on the next request
+    window.location.href = '/dashboard'
   }
 
   return (
@@ -43,8 +55,8 @@ export default function LoginPage() {
             {error && (
               <p className="text-sm px-4 py-2.5 rounded-lg" style={{ color: '#f87171', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)' }}>{error}</p>
             )}
-            <button type="submit" disabled={isPending} className="login-btn w-full py-2.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50">
-              {isPending ? 'Signing in...' : 'Sign in'}
+            <button type="submit" disabled={loading} className="login-btn w-full py-2.5 text-sm font-medium rounded-lg transition-all disabled:opacity-50">
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
         </div>
