@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const allCookies = cookieStore.getAll()
   const supabaseCookies = allCookies.filter(c => c.name.startsWith('sb-'))
   const testCookie = allCookies.find(c => c.name === 'rc-test')
+  const loginOk = allCookies.find(c => c.name === 'rc-login-ok')
 
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
@@ -27,5 +28,6 @@ export async function GET(request: NextRequest) {
     supabaseCookieNames: supabaseCookies.map(c => c.name),
     totalCookieCount: allCookies.length,
     testCookie: testCookie?.value ?? null,
+    loginHandlerRan: loginOk ? true : false,
   })
 }

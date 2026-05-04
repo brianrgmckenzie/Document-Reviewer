@@ -6,8 +6,6 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json()
 
-  // Call Supabase auth REST API directly — bypasses @supabase/ssr's async
-  // onAuthStateChange, which would cause setAll to fire after we return.
   const authRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: {
@@ -28,17 +26,25 @@ export async function POST(request: NextRequest) {
 
   const session = await authRes.json()
 
-  // @supabase/ssr stores: storage.setItem(key, JSON.stringify(session))
-  // then encodes the cookie as: "base64-" + base64url(storedValue)
   const json = JSON.stringify(session)
   const b64 = Buffer.from(json).toString('base64url')
   const cookieValue = `base64-${b64}`
 
-  // Cookie name: sb-${projectRef}-auth-token
   const projectRef = new URL(SUPABASE_URL).hostname.split('.')[0]
   const cookieName = `sb-${projectRef}-auth-token`
+  const cookieSize = cookieName.length + cookieValue.length
 
-  const response = NextResponse.json({ success: true })
+  const response = NextResponse.json({
+    success: true,
+    cookieSize,
+    cookieName,
+    cookieValueLength: cookieValue.length,
+  })
+
+  // Small marker cookie — always fits, confirms this handler ran
+  response.cookies.set('rc-login-ok', '1', { path: '/', maxAge: 60, sameSite: 'lax' })
+
+  // The auth cookie — may be dropped silently by browser if > ~4096 bytes total
   response.cookies.set(cookieName, cookieValue, {
     path: '/',
     sameSite: 'lax',
@@ -46,5 +52,6 @@ export async function POST(request: NextRequest) {
     maxAge: 400 * 24 * 60 * 60,
     ...(process.env.NODE_ENV === 'production' ? { secure: true } : {}),
   })
+
   return response
 }

@@ -19,14 +19,17 @@ export default function LoginPage() {
       body: JSON.stringify({ email, password }),
     })
 
+    const data = await res.json()
+
     if (!res.ok) {
-      const data = await res.json()
       setError(data.error ?? 'Login failed')
       setLoading(false)
       return
     }
 
-    // Hard redirect so the browser sends the new auth cookies on the next request
+    // Temporary: log diagnostic info to browser console
+    console.log('[auth-debug]', data)
+
     window.location.href = '/dashboard'
   }
 
