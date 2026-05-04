@@ -19,7 +19,12 @@ export default function LoginPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+
+    console.log('[login] supabaseUrl:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('[login] authError:', authError)
+    console.log('[login] session:', data?.session ? 'present' : 'null')
+    console.log('[login] document.cookie after login:', document.cookie)
 
     if (authError) {
       setError(authError.message)
