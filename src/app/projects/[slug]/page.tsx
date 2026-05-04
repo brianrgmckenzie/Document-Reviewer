@@ -48,8 +48,8 @@ function projectColor(id: string) {
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (!user) redirect(`/login?err=${encodeURIComponent(authError?.message ?? 'no-user')}`)
 
   const admin = createAdminClient()
   const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
