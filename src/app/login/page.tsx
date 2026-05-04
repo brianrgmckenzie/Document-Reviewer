@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { loginAction } from './actions'
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -14,10 +12,15 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const result = await loginAction(email, password)
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
 
-    if (result) {
-      setError(result)
+    if (!res.ok) {
+      const data = await res.json()
+      setError(data.error ?? 'Login failed')
       setLoading(false)
       return
     }
