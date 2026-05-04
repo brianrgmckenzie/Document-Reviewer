@@ -27,5 +27,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 401 })
   }
 
+  // Diagnostic: does NextResponse.cookies.set() work at all?
+  response.cookies.set('rc-route-test', 'yes', { path: '/', maxAge: 300, sameSite: 'lax' })
+
   return response
 }
