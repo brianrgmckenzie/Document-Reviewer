@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { loginAction } from './actions'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,25 +14,12 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const result = await loginAction(email, password)
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
-
-    console.log('[login] supabaseUrl:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('[login] authError:', authError)
-    console.log('[login] session:', data?.session ? 'present' : 'null')
-    console.log('[login] document.cookie after login:', document.cookie)
-
-    if (authError) {
-      setError(authError.message)
+    if (result) {
+      setError(result)
       setLoading(false)
-      return
     }
-
-    window.location.href = '/dashboard'
   }
 
   return (
