@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { signoutAction } from '@/app/actions/signout'
 
 interface Breadcrumb {
   label: string
@@ -65,13 +66,15 @@ export default function AppNav({ email, breadcrumbs, isSuperAdmin }: AppNavProps
           {email && (
             <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{email}</span>
           )}
-          <Link
-            href="/api/auth/signout"
-            className="dark-btn-outline px-3"
-            style={{ display: 'inline-flex', alignItems: 'center', height: 28, borderRadius: 5, fontSize: 12, textDecoration: 'none' }}
-          >
-            Sign out
-          </Link>
+          <form action={signoutAction}>
+            <button
+              type="submit"
+              className="dark-btn-outline px-3"
+              style={{ display: 'inline-flex', alignItems: 'center', height: 28, borderRadius: 5, fontSize: 12 }}
+            >
+              Sign out
+            </button>
+          </form>
         </div>
       </div>
     </header>

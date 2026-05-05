@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
-import { cookies } from 'next/headers'
 import Link from 'next/link'
 import DocumentUpload from '@/components/DocumentUpload'
 import DocumentCard from '@/components/DocumentCard'
@@ -48,17 +47,9 @@ function projectColor(id: string) {
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const cookieStore = await cookies()
-  const allCookies = cookieStore.getAll()
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (!user) return (
-    <pre style={{ padding: 24, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-      AUTH FAILED{'\n'}
-      error: {authError?.message}{'\n'}
-      cookies received: {JSON.stringify(allCookies.map(c => ({ name: c.name, len: c.value.length })), null, 2)}
-    </pre>
-  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
   const admin = createAdminClient()
   const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
