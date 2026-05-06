@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
 import ManuscriptClient from '@/components/ManuscriptClient'
-import AppLogo from '@/components/AppLogo'
+import AppNav from '@/components/AppNav'
 import { getEffectiveSession } from '@/lib/getEffectiveSession'
 
 export default async function ManuscriptPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -37,15 +36,15 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
-      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Link href="/dashboard"><AppLogo height={18} /></Link>
-          <span style={{ color: 'var(--border)' }}>/</span>
-          <Link href={`/projects/${slug}`} className="text-sm transition-colors" style={{ color: 'var(--text-muted)' }}>{project.name}</Link>
-          <span style={{ color: 'var(--border)' }}>/</span>
-          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Manuscript</span>
-        </div>
-      </header>
+      <AppNav
+        email={user.email}
+        isSuperAdmin={isSuperAdmin}
+        breadcrumbs={[
+          { label: 'Projects', href: '/dashboard' },
+          { label: project.name, href: `/projects/${slug}` },
+          { label: 'Manuscript' },
+        ]}
+      />
       <main className="max-w-4xl mx-auto px-6 py-10">
         <ManuscriptClient
           project={project}

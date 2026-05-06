@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import AdminUsersClient from '@/components/AdminUsersClient'
-import AppLogo from '@/components/AppLogo'
+import AppNav from '@/components/AppNav'
 
 export default async function AdminUsersPage() {
   const supabase = await createClient()
@@ -26,16 +25,11 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
-      <header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard"><AppLogo height={18} /></Link>
-            <span style={{ color: 'var(--border)' }}>/</span>
-            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Users</span>
-          </div>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{user.email}</span>
-        </div>
-      </header>
+      <AppNav
+        email={user.email}
+        isSuperAdmin={true}
+        breadcrumbs={[{ label: 'Users' }]}
+      />
       <main className="max-w-6xl mx-auto px-6 py-10">
         <AdminUsersClient projects={projects ?? []} currentUserId={user.id} />
       </main>
