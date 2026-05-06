@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { signoutAction } from '@/app/actions/signout'
+import AppLogo from '@/components/AppLogo'
 
 interface Breadcrumb {
   label: string
@@ -18,18 +19,7 @@ export default function AppNav({ email, breadcrumbs, isSuperAdmin }: AppNavProps
       <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <Link href="/dashboard" className="flex items-center gap-2.5 shrink-0">
-            <div style={{
-              width: 30, height: 30, borderRadius: 9,
-              background: 'linear-gradient(145deg, #3b82f6, #2563eb)',
-              boxShadow: '0 1px 0 rgba(255,255,255,0.35) inset, 0 3px 10px rgba(37,99,235,0.35)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: 'var(--font-space-grotesk)', fontWeight: 700,
-              fontSize: 13, color: 'white', flexShrink: 0,
-            }}>R</div>
-            <span style={{
-              fontFamily: 'var(--font-inter)', fontWeight: 500, fontSize: 14,
-              color: 'var(--text-secondary)',
-            }}>Document Review</span>
+            <AppLogo height={22} />
           </Link>
 
           {breadcrumbs && breadcrumbs.length > 0 && (
