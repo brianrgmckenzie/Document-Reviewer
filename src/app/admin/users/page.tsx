@@ -28,7 +28,7 @@ export default async function AdminUsersPage() {
       <AppNav
         email={user.email}
         isSuperAdmin={true}
-        breadcrumbs={[{ label: 'Users' }]}
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Users' }]}
       />
       <main className="max-w-6xl mx-auto px-6 py-10">
         <AdminUsersClient projects={projects ?? []} currentUserId={user.id} />
