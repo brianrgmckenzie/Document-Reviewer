@@ -6,7 +6,7 @@ function getResend() {
   return _resend
 }
 
-const FROM = 'Reframe Concierge <admin@reframeconcepts.com>'
+const FROM = process.env.RESEND_FROM ?? 'Reframe Concierge <onboarding@resend.dev>'
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')
 
 // ---------------------------------------------------------------------------
