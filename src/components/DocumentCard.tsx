@@ -100,7 +100,12 @@ export default function DocumentCard({
       }}
     >
       {/* Left column */}
-      <Link href={`/projects/${projectSlug}/documents/${doc.id}`} style={{ textDecoration: 'none', minWidth: 0 }}>
+      <Link href={`/projects/${projectSlug}/documents/${doc.id}`} style={{ textDecoration: 'none', minWidth: 0, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+        {doc.image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={doc.image_url} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 mt-0.5" style={{ border: '1px solid var(--border)' }} />
+        )}
+        <div className="min-w-0 flex-1">
         {/* Title + badges */}
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>
@@ -150,6 +155,7 @@ export default function DocumentCard({
             ))}
           </div>
         )}
+        </div>
       </Link>
 
       {/* Right column */}

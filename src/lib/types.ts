@@ -86,6 +86,7 @@ export interface Document {
   flags: string[] | null
   superseded_by: string | null
   supersedes: string | null
+  image_url: string | null
   extracted_text: string | null
   ai_processed: boolean
   ai_processed_at: string | null

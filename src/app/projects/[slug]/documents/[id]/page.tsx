@@ -6,6 +6,7 @@ import DocumentEditor from '@/components/DocumentEditor'
 import DocumentComments from '@/components/DocumentComments'
 import DocumentChat from '@/components/DocumentChat'
 import AppNav from '@/components/AppNav'
+import DocumentImageUpload from '@/components/DocumentImageUpload'
 import { getEffectiveSession } from '@/lib/getEffectiveSession'
 
 const TIER_STYLES: Record<number, { bg: string; color: string }> = {
@@ -116,6 +117,12 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
         <main className="max-w-4xl mx-auto px-6 py-10 space-y-5">
           {/* Document header */}
           <div className="dark-card p-6" style={{ borderRadius: 14 }}>
+            <div className="flex gap-4 items-start">
+              {document.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={document.image_url} alt="" className="w-16 h-16 rounded-xl object-cover shrink-0" style={{ border: '1px solid var(--border)' }} />
+              )}
+              <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               {tierStyle && tierLabel && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: tierStyle.bg, color: tierStyle.color, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tierLabel}</span>
@@ -166,6 +173,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
                 )}
               </div>
             )}
+              </div>
+            </div>
           </div>
 
           <DocumentChat documentId={id} projectId={project.id} />
@@ -189,57 +198,62 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
       <main className="max-w-5xl mx-auto px-6 py-10 space-y-5">
         {/* Document header card */}
         <div className="dark-card p-6" style={{ borderRadius: 14 }}>
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            {tierStyle && tierLabel && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: tierStyle.bg, color: tierStyle.color, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tierLabel}</span>
-            )}
-            {hasRisk && (
-              <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded" style={{ background: 'var(--risk-dim)', color: 'var(--risk)', fontSize: 10 }}>
-                <span className="risk-dot" style={{ width: 5, height: 5 }} />Risk
-              </span>
-            )}
-          </div>
-          <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', lineHeight: 1.35, marginBottom: 6 }}>
-            {document.title ?? document.file_name}
-          </h2>
-          {metaParts.length > 0 && (
-            <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>{metaParts.join(' · ')}</p>
-          )}
-          {executiveSummary && (
-            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>{executiveSummary}</p>
-          )}
-          {document.topics && document.topics.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-1">
-              {document.topics.slice(0, 8).map((t: string) => (
-                <span key={t} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 7px', borderRadius: 3, fontSize: 10, fontWeight: 500, background: 'var(--surface-3)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>{t}</span>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-4 items-start">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {tierStyle && tierLabel && (
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: tierStyle.bg, color: tierStyle.color, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tierLabel}</span>
+                )}
+                {hasRisk && (
+                  <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded" style={{ background: 'var(--risk-dim)', color: 'var(--risk)', fontSize: 10 }}>
+                    <span className="risk-dot" style={{ width: 5, height: 5 }} />Risk
+                  </span>
+                )}
+              </div>
+              <h2 style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', lineHeight: 1.35, marginBottom: 6 }}>
+                {document.title ?? document.file_name}
+              </h2>
+              {metaParts.length > 0 && (
+                <p className="text-xs mb-3" style={{ color: 'var(--text-secondary)' }}>{metaParts.join(' · ')}</p>
+              )}
+              {executiveSummary && (
+                <p className="text-sm mb-3" style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>{executiveSummary}</p>
+              )}
+              {document.topics && document.topics.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {document.topics.slice(0, 8).map((t: string) => (
+                    <span key={t} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 7px', borderRadius: 3, fontSize: 10, fontWeight: 500, background: 'var(--surface-3)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>{t}</span>
+                  ))}
+                </div>
+              )}
 
-          {/* Score summary row */}
-          {(craapTotal != null || document.relevance_weight != null || sentStyle) && (
-            <div className="flex items-center gap-5 mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-              {document.relevance_weight != null && (
-                <div>
-                  <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Salience</p>
-                  <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, fontSize: 22, color: 'var(--accent)' }}>
-                    {document.relevance_weight}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>/10</span>
-                  </span>
+              {/* Score summary row */}
+              {(craapTotal != null || document.relevance_weight != null || sentStyle) && (
+                <div className="flex items-center gap-5 mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                  {document.relevance_weight != null && (
+                    <div>
+                      <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>Salience</p>
+                      <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, fontSize: 22, color: 'var(--accent)' }}>
+                        {document.relevance_weight}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>/10</span>
+                      </span>
+                    </div>
+                  )}
+                  {craapTotal != null && (
+                    <div>
+                      <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>PARCA</p>
+                      <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, fontSize: 22, color: parcaColor(craapTotal) }}>
+                        {craapTotal}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>/50</span>
+                      </span>
+                    </div>
+                  )}
+                  {sentStyle && (
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded capitalize" style={{ background: sentStyle.bg, color: sentStyle.color }}>{document.sentiment}</span>
+                  )}
                 </div>
-              )}
-              {craapTotal != null && (
-                <div>
-                  <p className="text-xs mb-0.5" style={{ color: 'var(--text-muted)' }}>PARCA</p>
-                  <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, fontSize: 22, color: parcaColor(craapTotal) }}>
-                    {craapTotal}<span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>/50</span>
-                  </span>
-                </div>
-              )}
-              {sentStyle && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded capitalize" style={{ background: sentStyle.bg, color: sentStyle.color }}>{document.sentiment}</span>
               )}
             </div>
-          )}
+            <DocumentImageUpload documentId={id} currentImageUrl={document.image_url ?? null} />
+          </div>
         </div>
 
         {/* DocumentEditor with tabs (includes Chat tab) */}
