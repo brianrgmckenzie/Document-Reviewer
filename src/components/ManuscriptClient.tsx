@@ -164,7 +164,7 @@ export default function ManuscriptClient({ project, processedCount, initialManus
               {[
                 'All documents have been AI-processed',
                 'PARCA scores have been reviewed and adjusted for each document',
-                'Project-level PARCA dimension weights reflect this engagement\'s priorities',
+                "Project-level PARCA dimension weights reflect this engagement's priorities",
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   <span className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold" style={{ border: '2px solid var(--border)', color: 'var(--text-muted)' }}>{i + 1}</span>

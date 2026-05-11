@@ -29,7 +29,8 @@ export default function DocumentUpload({ projectId }: Props) {
     if (!user) return
 
     // Upload to Supabase Storage
-    const filePath = `${projectId}/${Date.now()}-${file.name}`
+    const timestamp = Date.now()
+    const filePath = `${projectId}/${timestamp}-${file.name}`
     const { error: storageError } = await supabase.storage
       .from('documents')
       .upload(filePath, file)
