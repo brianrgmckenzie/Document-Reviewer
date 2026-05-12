@@ -29,8 +29,8 @@ const FontSize = Extension.create({
   },
   addCommands() {
     return {
-      setFontSize: (fontSize: string) => ({ chain }: { chain: () => unknown }) => (chain() as any).setMark('textStyle', { fontSize }).run(),
-      unsetFontSize: () => ({ chain }: { chain: () => unknown }) => (chain() as any).setMark('textStyle', { fontSize: null }).unsetMark('textStyle').run(),
+      setFontSize: (fontSize: string) => ({ chain }: { chain: () => unknown }) => (chain() as { setMark: (a: string, b: object) => { run: () => boolean } }).setMark('textStyle', { fontSize }).run(),
+      unsetFontSize: () => ({ chain }: { chain: () => unknown }) => (chain() as { setMark: (a: string, b: object) => { unsetMark: (a: string) => { run: () => boolean } } }).setMark('textStyle', { fontSize: null }).unsetMark('textStyle').run(),
     }
   },
 })
@@ -127,7 +127,7 @@ function Toolbar({ editor }: { editor: Editor }) {
       <select
         value={currentSize}
         onChange={e => {
-          const chain = editor.chain().focus() as any
+          const chain = editor.chain().focus() as unknown as { setFontSize: (a: string) => { run: () => boolean }; unsetFontSize: () => { run: () => boolean } }
           if (e.target.value) chain.setFontSize(e.target.value).run()
           else chain.unsetFontSize().run()
         }}

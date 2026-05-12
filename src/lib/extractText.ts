@@ -6,7 +6,7 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
 
   if (ext === 'pdf') {
     return new Promise((resolve) => {
-      const pdfParser = new (PDFParser as any)(null, 1)
+      const pdfParser = new (PDFParser as unknown as { new (a: null, b: number): { on: (event: string, cb: () => void) => void; parseBuffer: (b: Buffer) => void; getRawTextContent: () => string } })(null, 1)
 
       pdfParser.on('pdfParser_dataError', () => {
         resolve(fileName)
@@ -14,7 +14,7 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
 
       pdfParser.on('pdfParser_dataReady', () => {
         try {
-          const text = (pdfParser as { getRawTextContent: () => string }).getRawTextContent()
+          const text = pdfParser.getRawTextContent()
           const cleaned = text
             .replace(/\r\n|\r/g, '\n')
             .replace(/\n{3,}/g, '\n\n')
