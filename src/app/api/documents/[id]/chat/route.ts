@@ -46,11 +46,12 @@ export async function POST(
     return new Response('Invalid request body', { status: 400 })
   }
 
-  if (!body || typeof body !== 'object' || !('messages' in body) || !Array.isArray((body as any).messages)) {
+  const reqBody = body as { messages?: unknown[] }
+  if (!reqBody || typeof reqBody !== 'object' || !('messages' in reqBody) || !Array.isArray(reqBody.messages)) {
     return new Response('Invalid messages', { status: 400 })
   }
 
-  const messages = (body as any).messages as unknown[]
+  const messages = reqBody.messages
 
   if (messages.length > MAX_MESSAGES) {
     return new Response('Too many messages', { status: 400 })
@@ -58,18 +59,19 @@ export async function POST(
 
   const validated: Array<{ role: 'user' | 'assistant'; content: string }> = []
   for (const msg of messages) {
+    const m = msg as { role?: string; content?: string }
     if (
-      !msg || typeof msg !== 'object' ||
-      typeof (msg as any).role !== 'string' ||
-      typeof (msg as any).content !== 'string' ||
-      !VALID_ROLES.has((msg as any).role)
+      !m || typeof m !== 'object' ||
+      typeof m.role !== 'string' ||
+      typeof m.content !== 'string' ||
+      !VALID_ROLES.has(m.role)
     ) {
       return new Response('Invalid message format', { status: 400 })
     }
-    if ((msg as any).content.length > MAX_MESSAGE_LENGTH) {
+    if (m.content.length > MAX_MESSAGE_LENGTH) {
       return new Response('Message too long', { status: 400 })
     }
-    validated.push({ role: (msg as any).role, content: (msg as any).content })
+    validated.push({ role: m.role as 'user' | 'assistant', content: m.content })
   }
 
   let documentText: string
@@ -84,9 +86,11 @@ export async function POST(
     } else {
       documentText = [
         doc.summary,
-        ...(doc.key_extracts ?? []).map((e: unknown) =>
-          typeof e === 'string' ? e : `"${(e as any).quote}" — ${(e as any).significance}`
-        ),
+        ...(doc.key_extracts ?? []).map((e: unknown) => {
+          if (typeof e === 'string') return e
+          const ex = e as { quote?: string; significance?: string }
+          return `"${ex.quote ?? ''}" — ${ex.significance ?? ''}`
+        }),
         ...(doc.chief_concerns ?? []),
         ...(doc.consultant_notes ?? []),
       ].filter(Boolean).join('\n\n')

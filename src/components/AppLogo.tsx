@@ -1,4 +1,5 @@
-// eslint-disable-next-line @next/next/no-img-element
+import Image from 'next/image'
+
 export default function AppLogo({ height = 24 }: { height?: number }) {
   return (
     <div style={{
@@ -9,9 +10,11 @@ export default function AppLogo({ height = 24 }: { height?: number }) {
       alignItems: 'center',
       flexShrink: 0,
     }}>
-      <img
+      <Image
         src="/reframe-logo.png"
         alt="Reframe Concepts"
+        height={height}
+        width={height * 4}
         style={{ height: `${height}px`, width: 'auto', display: 'block' }}
       />
     </div>

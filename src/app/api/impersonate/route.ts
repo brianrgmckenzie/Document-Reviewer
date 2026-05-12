@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const SECURE = process.env.NODE_ENV === 'production'
-
 async function requireSuperAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -30,8 +28,8 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ ok: true })
   response.cookies.set('rc_impersonate', userId, {
     httpOnly: true,
-    secure: SECURE,
-    sameSite: 'lax',
+    secure: true, // Always use secure cookies for impersonation
+    sameSite: 'strict', // More restrictive sameSite
     path: '/',
     maxAge: 60 * 60,
   })
@@ -43,8 +41,8 @@ export async function DELETE() {
   const response = NextResponse.json({ ok: true })
   response.cookies.set('rc_impersonate', '', {
     httpOnly: true,
-    secure: SECURE,
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'strict',
     path: '/',
     maxAge: 0,
   })

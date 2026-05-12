@@ -34,16 +34,6 @@ function parcaColor(total: number) {
   return 'var(--risk)'
 }
 
-function projectInitials(name: string) {
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
-}
-
-const PROJECT_COLORS = ['#4f7cff', '#9b7dff', '#2dd88a', '#f5a623', '#ff4d4d', '#38bdf8']
-function projectColor(id: string) {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
-  return PROJECT_COLORS[h % PROJECT_COLORS.length]
-}
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -57,7 +47,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const { role, userId: effectiveUserId, isImpersonating } = session
   const isSuperAdmin = role === 'super_admin'
   const isClient = role === 'client'
-  const isStaff = !isClient
 
   const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
@@ -73,11 +62,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
     .from('documents').select('*').eq('project_id', project.id)
     .order('authority_tier', { ascending: true }).order('document_date', { ascending: false })
 
-  const uploaderIds = [...new Set((documents ?? []).map((d: Document) => d.uploaded_by).filter(Boolean))] as string[]
+  const uploaderIds = [...new Set((documents ?? []).map((d: Document) => d.uploaded_by).filter((id): id is string => !!id))]
   const uploaderEmails: Record<string, string> = {}
   if (uploaderIds.length > 0) {
     const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    authUsers.forEach((u: any) => { uploaderEmails[u.id] = u.email ?? u.id })
+    authUsers.forEach((u: { id: string; email?: string | null }) => { uploaderEmails[u.id] = u.email ?? u.id })
   }
 
   // ── CLIENT VIEW ──────────────────────────────────────────────────────────
@@ -170,9 +159,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
                           : new Date(doc.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </td>
                       <td className="px-5 py-3">
-                        {(doc as any).craap_total != null ? (
-                          <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, color: parcaColor((doc as any).craap_total) }}>
-                            {(doc as any).craap_total}
+                        {(doc as unknown as { craap_total: number | null }).craap_total != null ? (
+                          <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, color: parcaColor((doc as unknown as { craap_total: number }).craap_total) }}>
+                            {(doc as unknown as { craap_total: number }).craap_total}
                             <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)' }}>/50</span>
                           </span>
                         ) : (
@@ -203,13 +192,10 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const unreviewed = documents?.filter((d: Document) => d.ai_processed && !d.human_reviewed).length ?? 0
 
   const avgParca = (() => {
-    const scored = (documents ?? []).filter((d: Document) => (d as any).craap_total != null)
+    const scored = (documents ?? []).filter((d: Document) => (d as unknown as { craap_total: number | null }).craap_total != null)
     if (!scored.length) return null
-    return Math.round(scored.reduce((s: number, d: Document) => s + (d as any).craap_total, 0) / scored.length)
+    return Math.round(scored.reduce((s: number, d: Document) => s + ((d as unknown as { craap_total: number }).craap_total), 0) / scored.length)
   })()
-
-  const color = projectColor(project.id)
-  const initials = projectInitials(project.name)
 
   return (
     <div className="min-h-screen fade-up" style={{ background: 'var(--background)' }}>

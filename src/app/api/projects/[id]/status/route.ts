@@ -28,7 +28,10 @@ export async function PATCH(
   }
 
   const { data: project, error } = await admin.from('projects').update({ status }).eq('id', id).select('name, slug').single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Update project status error:', error)
+    return NextResponse.json({ error: 'Failed to update project status' }, { status: 500 })
+  }
 
   // Notify clients assigned to this project
   if (project && (status === 'under_review' || status === 'complete')) {
@@ -52,8 +55,8 @@ export async function PATCH(
             const clientIds = roles.map((r: { user_id: string }) => r.user_id)
             const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
             const clientEmails = authUsers
-              .filter((u: any) => clientIds.includes(u.id) && u.email)
-              .map((u: any) => u.email as string)
+              .filter((u: { id: string; email?: string | null }) => clientIds.includes(u.id) && u.email)
+              .map((u: { email?: string | null }) => u.email as string)
 
             await sendStatusChange({
               to: clientEmails,

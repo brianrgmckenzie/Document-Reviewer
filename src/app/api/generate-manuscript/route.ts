@@ -16,9 +16,9 @@ function formatExtract(e: unknown): string {
   return `"${ex.quote ?? ''}" — ${ex.significance ?? ''}`
 }
 
-function computeWeightedPARCA(doc: any, weights: Record<string, number>): number {
+function computeWeightedPARCA(doc: Record<string, unknown>, weights: Record<string, number>): number {
   return PARCA_KEYS.reduce((sum, key) => {
-    const score = doc[`craap_${key}`] ?? 5
+    const score = (doc[`craap_${key}`] as number | null | undefined) ?? 5
     const weight = weights[key] ?? 1
     return sum + score * weight
   }, 0)

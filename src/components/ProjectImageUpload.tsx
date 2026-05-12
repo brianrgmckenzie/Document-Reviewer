@@ -110,8 +110,8 @@ export default function ProjectImageUpload({ projectId, currentImageUrl }: Props
       setOpen(false)
       setSrc(null)
       router.refresh()
-    } catch (err: any) {
-      setError(err.message ?? 'Upload failed')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
     }

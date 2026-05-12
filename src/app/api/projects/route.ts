@@ -52,7 +52,10 @@ export async function POST(request: NextRequest) {
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Create project error:', error)
+    return NextResponse.json({ error: 'Failed to create project' }, { status: 500 })
+  }
 
   return NextResponse.json({ project })
 }

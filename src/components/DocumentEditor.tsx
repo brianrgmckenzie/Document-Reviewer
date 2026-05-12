@@ -36,7 +36,7 @@ const SENTIMENT_STYLES: Record<string, { bg: string; color: string; border: stri
 type Tab = 'parca' | 'assessment' | 'entities' | 'chat'
 
 export default function DocumentEditor({
-  document: doc, projectSlug, role,
+  document: doc, role,
   documentId, projectId, currentUserEmail,
 }: {
   document: Document; projectSlug: string; role?: string | null
@@ -50,11 +50,11 @@ export default function DocumentEditor({
   const [retrying, setRetrying] = useState(false)
   const [retryError, setRetryError] = useState('')
   const [craap, setCraap] = useState({
-    craap_currency:     (doc as any).craap_currency     ?? 5,
-    craap_relevance:    (doc as any).craap_relevance    ?? 5,
-    craap_authority:    (doc as any).craap_authority    ?? 5,
-    craap_completeness: (doc as any).craap_completeness ?? 5,
-    craap_purpose:      (doc as any).craap_purpose      ?? 5,
+    craap_currency:     (doc as unknown as { craap_currency: number }).craap_currency     ?? 5,
+    craap_relevance:    (doc as unknown as { craap_relevance: number }).craap_relevance    ?? 5,
+    craap_authority:    (doc as unknown as { craap_authority: number }).craap_authority    ?? 5,
+    craap_completeness: (doc as unknown as { craap_completeness: number }).craap_completeness ?? 5,
+    craap_purpose:      (doc as unknown as { craap_purpose: number }).craap_purpose      ?? 5,
   })
   const [form, setForm] = useState({
     title:               doc.title ?? '',
@@ -113,7 +113,12 @@ export default function DocumentEditor({
         <div className="dark-card p-6" style={{ borderRadius: 12 }}>
           <h3 className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>PARCA Score</h3>
           <p className="text-xs mb-5" style={{ color: 'var(--text-muted)' }}>Adjust based on your judgment.</p>
-          <CRAAPEditor scores={craap} weights={(doc as any).project_craap_weights ?? { currency: 1, relevance: 1, authority: 1, completeness: 1, purpose: 1 }} aiScores={(doc as any).craap_ai_scores} onChange={setCraap} />
+          <CRAAPEditor
+            scores={craap}
+            weights={(doc as unknown as { project_craap_weights: Record<string, number> }).project_craap_weights ?? { currency: 1, relevance: 1, authority: 1, completeness: 1, purpose: 1 }}
+            aiScores={(doc as unknown as { craap_ai_scores: Record<string, number> }).craap_ai_scores}
+            onChange={setCraap}
+          />
         </div>
       </div>
     )
@@ -157,7 +162,6 @@ export default function DocumentEditor({
   }
 
   const tier = Number(form.authority_tier) as AuthorityTier
-  const sentStyle = SENTIMENT_STYLES[form.sentiment] ?? SENTIMENT_STYLES.neutral
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'parca',      label: 'PARCA Scores' },
@@ -220,8 +224,8 @@ export default function DocumentEditor({
         {activeTab === 'parca' && (
           <CRAAPEditor
             scores={craap}
-            weights={(doc as any).project_craap_weights ?? { currency: 1, relevance: 1, authority: 1, completeness: 1, purpose: 1 }}
-            aiScores={(doc as any).craap_ai_scores}
+            weights={(doc as unknown as { project_craap_weights: Record<string, number> }).project_craap_weights ?? { currency: 1, relevance: 1, authority: 1, completeness: 1, purpose: 1 }}
+            aiScores={(doc as unknown as { craap_ai_scores: Record<string, number> }).craap_ai_scores}
             onChange={setCraap}
           />
         )}
@@ -405,7 +409,7 @@ export default function DocumentEditor({
                 { key: 'funders',    label: 'Funders',       color: '#f5a623' },
               ]
               return ENTITY_SECTIONS.map(({ key, label, color }) => {
-                const values = (doc.named_entities as any)?.[key]
+                const values = (doc.named_entities as unknown as Record<string, string[]>)?.[key]
                 if (!Array.isArray(values) || values.length === 0) return null
                 return (
                   <div key={key}>
@@ -430,7 +434,7 @@ export default function DocumentEditor({
                 { key: 'units',   label: 'Units', color: '#9b7dff' },
               ]
               return numSections.map(({ key, label, color }) => {
-                const values = (doc.key_numbers as any)?.[key]
+                const values = (doc.key_numbers as unknown as Record<string, string[]>)?.[key]
                 if (!Array.isArray(values) || values.length === 0) return null
                 return (
                   <div key={key}>

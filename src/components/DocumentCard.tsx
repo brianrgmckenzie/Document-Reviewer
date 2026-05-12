@@ -82,7 +82,7 @@ export default function DocumentCard({
     uploaderEmail ? `Uploaded by ${uploaderEmail}` : null,
   ].filter(Boolean)
 
-  const craapTotal = (doc as any).craap_total
+  const craapTotal = (doc as unknown as { craap_total: number | null }).craap_total
   const sentStyle = doc.sentiment ? SENTIMENT_STYLES[doc.sentiment] : null
 
   return (
@@ -138,9 +138,9 @@ export default function DocumentCard({
             {doc.summary}
           </p>
         )}
-        {!doc.summary && (doc as any).quick_scan?.headline && (
+        {!doc.summary && (doc as unknown as { quick_scan: { headline?: string } }).quick_scan?.headline && (
           <p className="text-xs mt-1 italic line-clamp-2" style={{ color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: 600 }}>
-            {(doc as any).quick_scan.headline}
+            {(doc as unknown as { quick_scan: { headline?: string } }).quick_scan.headline}
           </p>
         )}
 
