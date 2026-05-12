@@ -28,7 +28,10 @@ export async function PATCH(
   }
 
   const { data: project, error } = await admin.from('projects').update({ status }).eq('id', id).select('name, slug').single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Update project status error:', error)
+    return NextResponse.json({ error: 'Failed to update project status' }, { status: 500 })
+  }
 
   // Notify clients assigned to this project
   if (project && (status === 'under_review' || status === 'complete')) {

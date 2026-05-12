@@ -30,8 +30,8 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ ok: true })
   response.cookies.set('rc_impersonate', userId, {
     httpOnly: true,
-    secure: SECURE,
-    sameSite: 'lax',
+    secure: true, // Always use secure cookies for impersonation
+    sameSite: 'strict', // More restrictive sameSite
     path: '/',
     maxAge: 60 * 60,
   })
@@ -43,8 +43,8 @@ export async function DELETE() {
   const response = NextResponse.json({ ok: true })
   response.cookies.set('rc_impersonate', '', {
     httpOnly: true,
-    secure: SECURE,
-    sameSite: 'lax',
+    secure: true,
+    sameSite: 'strict',
     path: '/',
     maxAge: 0,
   })

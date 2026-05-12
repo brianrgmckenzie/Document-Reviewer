@@ -40,7 +40,10 @@ export async function GET(
     .eq('document_id', id)
     .order('created_at', { ascending: true })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Fetch comments error:', error)
+    return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 })
+  }
   return NextResponse.json({ comments: data ?? [] })
 }
 
@@ -88,7 +91,10 @@ export async function POST(
     .select()
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Create comment error:', error)
+    return NextResponse.json({ error: 'Failed to create comment' }, { status: 500 })
+  }
 
   // Notify the other party (fire and forget)
   ;(async () => {

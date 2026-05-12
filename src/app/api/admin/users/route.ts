@@ -21,7 +21,10 @@ export async function GET() {
   const admin = createAdminClient()
 
   const { data: { users }, error } = await admin.auth.admin.listUsers()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('List users error:', error)
+    return NextResponse.json({ error: 'Failed to list users' }, { status: 500 })
+  }
 
   const { data: roles } = await admin.from('user_roles').select('user_id, role')
   const { data: memberships } = await admin

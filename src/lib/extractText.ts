@@ -19,7 +19,6 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
             .replace(/\r\n|\r/g, '\n')
             .replace(/\n{3,}/g, '\n\n')
             .trim()
-          console.log(`PDF extracted ${cleaned.length} characters from ${fileName}`)
           resolve(cleaned || fileName)
         } catch {
           resolve(fileName)
@@ -34,7 +33,6 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
     try {
       const result = await mammoth.extractRawText({ buffer })
       const cleaned = result.value.replace(/\r\n|\r/g, '\n').replace(/\n{3,}/g, '\n\n').trim()
-      console.log(`DOCX extracted ${cleaned.length} characters from ${fileName}`)
       return cleaned || fileName
     } catch {
       return fileName
