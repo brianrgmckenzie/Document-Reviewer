@@ -54,7 +54,6 @@ export default async function DashboardPage() {
 
   const statsByProject: Record<string, DocStats> = {}
   let totalDocs = 0
-  let totalUnreviewed = 0
   let totalRiskProjects = 0
 
   if (isSuperAdmin && projects.length > 0) {
@@ -75,7 +74,6 @@ export default async function DashboardPage() {
     }
 
     totalDocs = Object.values(statsByProject).reduce((sum, s) => sum + s.total, 0)
-    totalUnreviewed = Object.values(statsByProject).reduce((sum, s) => sum + s.unreviewed, 0)
     totalRiskProjects = Object.values(statsByProject).filter(s => s.hasRisk).length
   }
 

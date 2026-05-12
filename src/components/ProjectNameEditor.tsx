@@ -12,7 +12,7 @@ interface Props {
   isSuperAdmin: boolean
 }
 
-export default function ProjectNameEditor({ projectId, name, clientName, projectType, isSuperAdmin }: Props) {
+export default function ProjectNameEditor({ projectId, name, clientName, isSuperAdmin }: Props) {
   const [editing, setEditing] = useState(false)
   const [nameVal, setNameVal] = useState(name)
   const [clientVal, setClientVal] = useState(clientName)

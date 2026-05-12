@@ -14,7 +14,7 @@ export async function extractTextFromBuffer(buffer: Buffer, fileName: string): P
 
       pdfParser.on('pdfParser_dataReady', () => {
         try {
-          const text = (pdfParser as any).getRawTextContent()
+          const text = (pdfParser as { getRawTextContent: () => string }).getRawTextContent()
           const cleaned = text
             .replace(/\r\n|\r/g, '\n')
             .replace(/\n{3,}/g, '\n\n')

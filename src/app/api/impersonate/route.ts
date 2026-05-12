@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const SECURE = process.env.NODE_ENV === 'production'
-
 async function requireSuperAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

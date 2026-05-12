@@ -115,15 +115,15 @@ export async function POST(
         const notifyIds = new Set([...memberIds, ...superAdminIds])
         notifyIds.delete(user.id)
         const { data: nonClientRoles } = await admin.from('user_roles').select('user_id, role').in('user_id', [...notifyIds])
-        const staffIds = new Set((nonClientRoles ?? []).filter((r: any) => r.role !== 'client').map((r: any) => r.user_id as string))
-        recipientEmails = authUsers.filter((u: any) => staffIds.has(u.id) && u.email).map((u: any) => u.email as string)
+        const staffIds = new Set((nonClientRoles ?? []).filter((r: { role: string }) => r.role !== 'client').map((r: { user_id: string }) => r.user_id))
+        recipientEmails = authUsers.filter((u: { id: string; email?: string | null }) => staffIds.has(u.id) && u.email).map((u: { email?: string | null }) => u.email as string)
       } else {
         const { data: members } = await admin.from('project_members').select('user_id').eq('project_id', projectId)
         const memberIds = (members ?? []).map((m: { user_id: string }) => m.user_id)
         const { data: clientRoles } = await admin.from('user_roles').select('user_id').in('user_id', memberIds).eq('role', 'client')
         const clientIds = new Set((clientRoles ?? []).map((r: { user_id: string }) => r.user_id))
         clientIds.delete(user.id)
-        recipientEmails = authUsers.filter((u: any) => clientIds.has(u.id) && u.email).map((u: any) => u.email as string)
+        recipientEmails = authUsers.filter((u: { id: string; email?: string | null }) => clientIds.has(u.id) && u.email).map((u: { email?: string | null }) => u.email as string)
       }
 
       if (recipientEmails.length > 0) {

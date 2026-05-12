@@ -34,8 +34,8 @@ export async function GET() {
     .from('user_profiles')
     .select('user_id, first_name, last_name, organization')
 
-  const roleMap = Object.fromEntries((roles ?? []).map((r: any) => [r.user_id, r.role]))
-  const profileMap = Object.fromEntries((profiles ?? []).map((p: any) => [p.user_id, p]))
+  const roleMap = Object.fromEntries((roles ?? []).map((r: { user_id: string; role: string }) => [r.user_id, r.role]))
+  const profileMap = Object.fromEntries((profiles ?? []).map((p: { user_id: string; first_name?: string | null; last_name?: string | null; organization?: string | null }) => [p.user_id, p]))
 
   const membershipMap: Record<string, { id: string; name: string; slug: string }[]> = {}
   for (const m of memberships ?? []) {

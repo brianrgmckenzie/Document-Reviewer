@@ -29,9 +29,9 @@ const FontSize = Extension.create({
   },
   addCommands() {
     return {
-      setFontSize: (fontSize: string) => ({ chain }: any) => chain().setMark('textStyle', { fontSize }).run(),
-      unsetFontSize: () => ({ chain }: any) => chain().setMark('textStyle', { fontSize: null }).unsetMark('textStyle').run(),
-    } as any
+      setFontSize: (fontSize: string) => ({ chain }: { chain: () => unknown }) => (chain() as any).setMark('textStyle', { fontSize }).run(),
+      unsetFontSize: () => ({ chain }: { chain: () => unknown }) => (chain() as any).setMark('textStyle', { fontSize: null }).unsetMark('textStyle').run(),
+    }
   },
 })
 
@@ -127,8 +127,9 @@ function Toolbar({ editor }: { editor: Editor }) {
       <select
         value={currentSize}
         onChange={e => {
-          if (e.target.value) (editor.chain().focus() as any).setFontSize(e.target.value).run()
-          else (editor.chain().focus() as any).unsetFontSize().run()
+          const chain = editor.chain().focus() as any
+          if (e.target.value) chain.setFontSize(e.target.value).run()
+          else chain.unsetFontSize().run()
         }}
         style={{ ...selectStyle, width: 70 }}
       >

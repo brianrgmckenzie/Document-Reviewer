@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
-import Link from 'next/link'
 import DocumentEditor from '@/components/DocumentEditor'
 import DocumentComments from '@/components/DocumentComments'
 import DocumentChat from '@/components/DocumentChat'
@@ -83,7 +82,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
   const tier = document.authority_tier as number | null
   const tierStyle = tier ? TIER_STYLES[tier] : null
   const tierLabel = tier ? TIER_LABELS[tier] : null
-  const craapTotal = (document as any).craap_total
+  const craapTotal = (document as unknown as { craap_total: number | null }).craap_total
   const hasRisk = (document.flags ?? []).includes('high-priority') || document.sentiment === 'risk'
   const sentStyle = document.sentiment ? SENTIMENT_STYLES[document.sentiment] : null
 

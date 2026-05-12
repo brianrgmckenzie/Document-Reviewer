@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface Comment {
   id: string
@@ -24,14 +24,21 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
   const [deleting, setDeleting] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
-  async function loadComments() {
+  const loadComments = useCallback(async () => {
     const res = await fetch(`/api/documents/${documentId}/comments`)
     const data = await res.json()
     setComments(data.comments ?? [])
     setLoading(false)
-  }
+  }, [documentId])
 
-  useEffect(() => { loadComments() }, [documentId])
+  useEffect(() => {
+    let mounted = true
+    const init = async () => {
+      if (mounted) await loadComments()
+    }
+    init()
+    return () => { mounted = false }
+  }, [documentId, loadComments])
 
   useEffect(() => {
     function onAiComment(e: Event) {
@@ -153,7 +160,7 @@ export default function DocumentComments({ documentId, projectId, currentUserEma
           onChange={e => setBody(e.target.value)}
           placeholder="Add a comment or context..."
           className="dark-input flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-all"
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e as any) } }}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e as unknown as React.FormEvent) } }}
         />
         <button
           type="submit"

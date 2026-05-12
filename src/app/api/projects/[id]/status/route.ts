@@ -55,8 +55,8 @@ export async function PATCH(
             const clientIds = roles.map((r: { user_id: string }) => r.user_id)
             const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
             const clientEmails = authUsers
-              .filter((u: any) => clientIds.includes(u.id) && u.email)
-              .map((u: any) => u.email as string)
+              .filter((u: { id: string; email?: string | null }) => clientIds.includes(u.id) && u.email)
+              .map((u: { email?: string | null }) => u.email as string)
 
             await sendStatusChange({
               to: clientEmails,
