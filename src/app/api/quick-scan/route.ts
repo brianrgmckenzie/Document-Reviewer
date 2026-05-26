@@ -42,19 +42,11 @@ export async function POST(request: NextRequest) {
   const { data: fileData } = await supabase.storage.from('documents').download(doc.file_path)
   if (!fileData) return NextResponse.json({ error: 'File not found in storage' }, { status: 404 })
   const buffer = Buffer.from(await fileData.arrayBuffer())
-  const textContent = await extractTextFromBuffer(buffer, doc.file_name)
+  const isPdf = doc.file_name.split('.').pop()?.toLowerCase() === 'pdf'
 
-  try {
-    const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `You are doing a rapid 10-second intake scan of a document for a consulting firm.
+  const promptText = `You are doing a rapid 10-second intake scan of a document for a consulting firm.
 
 FILENAME: ${doc.file_name}
-CONTENT (first pages only):
-${textContent.slice(0, 3000)}
 
 Return JSON only:
 {
@@ -64,8 +56,27 @@ Return JSON only:
   "headline": "One sentence: what is this document and why does it matter for understanding this organization",
   "worth_full_processing": true or false,
   "skip_reason": "If false, why — otherwise null"
-}`,
-      }],
+}`
+
+  const messageContent = isPdf
+    ? [
+        {
+          type: 'document' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: 'application/pdf' as const,
+            data: buffer.toString('base64'),
+          },
+        },
+        { type: 'text' as const, text: promptText },
+      ]
+    : `${promptText}\n\nCONTENT (first pages only):\n${(await extractTextFromBuffer(buffer, doc.file_name)).slice(0, 3000)}`
+
+  try {
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: messageContent }],
     })
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '{}'
@@ -81,7 +92,6 @@ Return JSON only:
       title: scan.title as string ?? null,
       quick_scan: scan,
       quick_scanned_at: new Date().toISOString(),
-      extracted_text: textContent,
     }).eq('id', documentId)
 
     return NextResponse.json({ success: true, scan })

@@ -39,11 +39,22 @@ export async function POST(request: NextRequest) {
   const allowed = await requireProjectAccess(user.id, doc.project_id, role)
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  let textContent: string
-  const freshlyExtracted = !doc.extracted_text
-  if (doc.extracted_text) {
-    textContent = doc.extracted_text
+  const isPdf = doc.file_name.split('.').pop()?.toLowerCase() === 'pdf'
+  let content: string | Buffer
+  let freshlyExtracted = false
+
+  if (isPdf) {
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('documents')
+      .download(doc.file_path)
+    if (downloadError || !fileData) {
+      return NextResponse.json({ error: 'Failed to download file' }, { status: 500 })
+    }
+    content = Buffer.from(await fileData.arrayBuffer())
+  } else if (doc.extracted_text) {
+    content = doc.extracted_text
   } else {
+    freshlyExtracted = true
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('documents')
       .download(doc.file_path)
@@ -51,11 +62,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to download file' }, { status: 500 })
     }
     const buffer = Buffer.from(await fileData.arrayBuffer())
-    textContent = await extractTextFromBuffer(buffer, doc.file_name)
+    content = await extractTextFromBuffer(buffer, doc.file_name)
   }
 
   try {
-    const assessment = await processDocument(textContent, doc.file_name)
+    const assessment = await processDocument(content, doc.file_name)
 
     let documentDate: string | null = assessment.document_date
     if (documentDate) {
@@ -96,7 +107,7 @@ export async function POST(request: NextRequest) {
         flags: assessment.flags,
         ai_processed: true,
         ai_processed_at: new Date().toISOString(),
-        ...(freshlyExtracted ? { extracted_text: textContent } : {}),
+        ...(freshlyExtracted && typeof content === 'string' ? { extracted_text: content } : {}),
       })
       .eq('id', documentId)
 

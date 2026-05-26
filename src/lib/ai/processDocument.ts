@@ -38,18 +38,17 @@ export interface AIDocumentAssessment {
 }
 
 export async function processDocument(
-  textContent: string,
+  content: string | Buffer,
   fileName: string
 ): Promise<AIDocumentAssessment> {
-  const prompt = `You are a senior impact consultant at Reframe Concepts — a firm that works with faith-based organizations, nonprofits, and land-owning for-profits to achieve long-term sustainability, governance, and community impact.
+  const isPdf = Buffer.isBuffer(content)
+
+  const promptText = `You are a senior impact consultant at Reframe Concepts — a firm that works with faith-based organizations, nonprofits, and land-owning for-profits to achieve long-term sustainability, governance, and community impact.
 
 You are conducting a document intake review. Your job is to read this document the way an experienced consultant would — not just summarizing what it says, but interpreting what it reveals, what it implies, and what it should make the engagement team pay attention to.
 
 DOCUMENT FILENAME: ${fileName}
-
-DOCUMENT CONTENT:
-${textContent.slice(0, 80000)}
-
+${isPdf ? '' : `\nDOCUMENT CONTENT:\n${(content as string).slice(0, 80000)}\n`}
 BRIEFING FORMAT (for the "briefing" field):
 Generate a comprehensive briefing document in Markdown. It must be thorough enough that a consultant does not need to read the original document. Use this structure:
 
@@ -155,10 +154,26 @@ Produce a JSON assessment with the following fields:
 
 Return ONLY valid JSON. No explanation, no markdown, just the JSON object.`
 
+  const prompt = promptText
+
+  const messageContent = isPdf
+    ? [
+        {
+          type: 'document' as const,
+          source: {
+            type: 'base64' as const,
+            media_type: 'application/pdf' as const,
+            data: (content as Buffer).toString('base64'),
+          },
+        },
+        { type: 'text' as const, text: prompt },
+      ]
+    : prompt
+
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 16000,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: 'user', content: messageContent }],
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
