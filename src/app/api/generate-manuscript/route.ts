@@ -13,7 +13,7 @@ const PARCA_KEYS = ['currency', 'relevance', 'authority', 'completeness', 'purpo
 function formatExtract(e: unknown): string {
   if (typeof e === 'string') return `"${e}"`
   const ex = e as { quote?: string; significance?: string }
-  return `"${ex.quote ?? ''}" — ${ex.significance ?? ''}`
+  return `"${ex.quote ?? ''}" -- ${ex.significance ?? ''}`
 }
 
 function computeWeightedPARCA(doc: any, weights: Record<string, number>): number {
@@ -102,10 +102,10 @@ export async function POST(request: NextRequest) {
     const influence = parcaLabel(weightedScore, maxWeighted)
 
     return `
-DOCUMENT ${i + 1} [PARCA: ${rawTotal}/50 | Weighted: ${weightedScore.toFixed(1)}/${maxWeighted.toFixed(0)} | Influence: ${influence}]
+FILE: ${doc.file_name} [PARCA: ${rawTotal}/50 | Weighted: ${weightedScore.toFixed(1)}/${maxWeighted.toFixed(0)} | Influence: ${influence}]
 Title: ${doc.title ?? doc.file_name}
 Date: ${doc.document_date ?? 'Unknown'} | Category: ${doc.category ?? 'Unknown'} | Tier: ${doc.authority_tier_label ?? 'Unknown'}
-PARCA Breakdown — Purpose: ${doc.craap_purpose ?? '?'} | Authority: ${doc.craap_authority ?? '?'} | Relevance: ${doc.craap_relevance ?? '?'} | Completeness: ${doc.craap_completeness ?? '?'} | Accuracy: ${doc.craap_currency ?? '?'}
+PARCA Breakdown - Purpose: ${doc.craap_purpose ?? '?'} | Authority: ${doc.craap_authority ?? '?'} | Relevance: ${doc.craap_relevance ?? '?'} | Completeness: ${doc.craap_completeness ?? '?'} | Accuracy: ${doc.craap_currency ?? '?'}
 Sentiment: ${doc.sentiment ?? 'neutral'}
 Summary: ${doc.summary ?? 'No summary available'}
 Chief Concerns: ${(doc.chief_concerns ?? []).join(' | ') || 'None identified'}
@@ -133,47 +133,52 @@ The documents below are ranked from highest to lowest weighted PARCA score. Docu
 
 ${docSummaries}
 
-Based on this document review, produce a comprehensive intake manuscript. Write as a senior consultant briefing their team: direct, analytical, and actionable. Do not hedge. Name what you see. Ground every claim in specific documents — cite by title when making key assertions.
+Based on this document review, produce a thorough intake manuscript. Write as a senior consultant briefing their team: direct, analytical, and actionable. Do not hedge. Name what you see. Ground every claim in specific documents -- cite by filename (e.g. "per filename.pdf") when making assertions. Never reference documents by number (e.g. "Doc 3"). Do not use em dashes anywhere in your output -- use a hyphen or colon instead.
+
+Each section should be substantive. Thin sections are not acceptable. If the documents provide enough material, go deep.
 
 Structure the manuscript exactly as follows:
 
 # Intake Manuscript: ${project.client_name}
 
 ## Executive Overview
-3-5 sentences. Where is this organization today? What is the headline story the documents collectively tell? Ground this in your highest-CRAAP documents.
+A full paragraph (5-8 sentences). Where is this organization today? What is the headline story the documents collectively tell? What is the single most important thing the engagement team needs to understand before their first client meeting? Ground this in your highest-CRAAP documents.
 
 ## Organizational Trajectory
-How did they get here? Trace the arc from earliest to most recent documents. What has changed, what hasn't, and what does the direction of travel predict about where they are heading?
+Trace the arc from earliest to most recent documents in detail. What has changed, what has not, and what does the direction of travel predict? Look for patterns across documents, not just summaries of individual ones. What are the inflection points?
 
 ## Chief Concerns
-A numbered list of the most significant concerns, risks, or red flags. Prioritize concerns surfaced by high-CRAAP documents. Be specific — name the document and the issue.
+A numbered list of the most significant concerns, risks, or red flags. At least 5, up to 10. For each: name the specific issue, cite the source document by filename, and explain why it matters for this engagement. Prioritize concerns from high-CRAAP documents.
 
 ## Strategic Opportunities
-What do the documents reveal about genuine opportunities — stated or implied? What assets, relationships, or momentum exist that could be leveraged?
+What do the documents reveal about genuine opportunities -- stated or implied? What assets, relationships, or momentum exist that Reframe Concepts could help the client leverage? Be concrete, not generic.
 
-## Governance & Leadership Observations
-What do the documents reveal about how this organization makes decisions, who holds power, and whether governance is fit for the challenges ahead?
+## Governance and Leadership Observations
+What do the documents reveal about how this organization makes decisions, who holds power, and whether governance structures are fit for the challenges ahead? Note any signs of dysfunction, concentration of authority, or absence of key oversight.
 
 ## Financial Picture
-What does the financial evidence suggest about sustainability, risk exposure, and capacity for investment?
+What does the financial evidence suggest about sustainability, risk exposure, and capacity for investment? Cite specific figures from the documents where available. Flag anything that warrants deeper due diligence.
 
-## Property & Physical Assets
-If applicable — what is known about the organization's physical assets and their strategic role?
+## Property and Physical Assets
+What is known about the organization's physical assets and their strategic role? Address condition, encumbrances, utilization, and alignment with mission. If no property information was provided, say so and note what should be requested.
 
-## Gaps & Missing Information
-What documents or data are conspicuously absent? What questions remain unanswered that the team should prioritize in early client conversations?
+## Key People and Organizations
+Who are the significant individuals and organizations named across the documents? What roles do they play, and what does their involvement signal about the engagement context?
+
+## Gaps and Missing Information
+What documents or data are conspicuously absent? What questions remain unanswered? List at least 5 specific items the team should prioritize in early client conversations.
 
 ## Recommended Focus Areas for Engagement
-3-5 specific, prioritized recommendations for where Reframe Concepts should focus first, based on what the documents reveal.
+5-7 specific, prioritized recommendations for where Reframe Concepts should focus first, based on what the documents reveal. Each recommendation should be actionable and tied to evidence from the document review.
 
 ---
 *Generated by Reframe Concepts Document Review Platform. Based on ${documents.length} documents. CRAAP-weighted synthesis.*
 
-Write in clear, professional prose. Use bullet points sparingly. This should read like a well-crafted consultant briefing note, not a form or checklist.`
+Write in clear, professional prose. Use bullet points only in list sections (Chief Concerns, Gaps, Recommended Focus Areas). Narrative sections should be paragraphs. This should read like a thorough consultant briefing note, not a form.`
 
   const response = await client.messages.create({
     model: 'claude-opus-4-7',
-    max_tokens: 4000,
+    max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   })
 
