@@ -7,11 +7,22 @@ async function getProject(token: string) {
   const admin = createAdminClient()
   const { data } = await admin
     .from('projects')
-    .select('client_name, name, manuscript, manuscript_generated_at, audio_url')
+    .select('client_name, name, manuscript, manuscript_generated_at')
     .eq('share_token', token)
     .eq('share_enabled', true)
     .single()
   return data
+}
+
+async function getAudioUrl(token: string): Promise<string | null> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('projects')
+    .select('audio_url')
+    .eq('share_token', token)
+    .eq('share_enabled', true)
+    .single()
+  return (data as { audio_url?: string | null } | null)?.audio_url ?? null
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }): Promise<Metadata> {
@@ -35,7 +46,10 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
 export default async function SharePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const project = await getProject(token)
+  const [project, audioUrl] = await Promise.all([
+    getProject(token),
+    getAudioUrl(token).catch(() => null),
+  ])
 
   if (!project?.manuscript) notFound()
 
@@ -55,7 +69,7 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
         </div>
       </header>
       <main className="max-w-4xl mx-auto px-6 py-10">
-        <ShareClient manuscript={project.manuscript} audioUrl={project.audio_url ?? null} />
+        <ShareClient manuscript={project.manuscript} audioUrl={audioUrl} />
       </main>
     </div>
   )
