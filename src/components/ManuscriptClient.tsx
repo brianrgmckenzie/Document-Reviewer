@@ -157,7 +157,7 @@ export default function ManuscriptClient({
     })
     if (!urlRes.ok) {
       const body = await urlRes.json().catch(() => ({}))
-      setAudioError(body.error ?? 'Upload failed')
+      setAudioError(`Step 1 failed (${urlRes.status}): ${body.error ?? 'could not get upload URL'}`)
       setAudioUploading(false)
       e.target.value = ''
       return
@@ -171,7 +171,8 @@ export default function ManuscriptClient({
       headers: { 'Content-Type': file.type },
     })
     if (!uploadRes.ok) {
-      setAudioError('Storage upload failed — check bucket permissions')
+      const text = await uploadRes.text().catch(() => '')
+      setAudioError(`Step 2 failed (${uploadRes.status}): ${text.slice(0, 120)}`)
       setAudioUploading(false)
       e.target.value = ''
       return
@@ -187,7 +188,7 @@ export default function ManuscriptClient({
       setAudioUrl(publicUrl)
     } else {
       const body = await saveRes.json().catch(() => ({}))
-      setAudioError(body.error ?? 'Failed to save audio URL')
+      setAudioError(`Step 3 failed (${saveRes.status}): ${body.error ?? 'could not save URL'}`)
     }
     setAudioUploading(false)
     e.target.value = ''
