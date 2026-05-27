@@ -52,6 +52,9 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
           initialManuscript={project.manuscript ?? null}
           manuscriptGeneratedAt={project.manuscript_generated_at ?? null}
           readOnly={isClient}
+          isSuperAdmin={isSuperAdmin && !isImpersonating}
+          initialShareToken={project.share_token ?? null}
+          initialShareEnabled={project.share_enabled ?? false}
         />
       </main>
     </div>

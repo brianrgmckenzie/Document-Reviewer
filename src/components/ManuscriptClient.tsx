@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { exportManuscriptToDocx } from '@/lib/exportDocx'
+import ManuscriptRenderer from '@/components/ManuscriptRenderer'
 
 interface Props {
   project: { id: string; name: string; client_name: string }
@@ -10,55 +11,37 @@ interface Props {
   initialManuscript: string | null
   manuscriptGeneratedAt: string | null
   readOnly?: boolean
+  isSuperAdmin?: boolean
+  initialShareToken?: string | null
+  initialShareEnabled?: boolean
 }
 
-function renderManuscript(text: string) {
-  const lines = text.split('\n')
-  const elements: React.ReactNode[] = []
-
-  lines.forEach((line, i) => {
-    if (line.startsWith('# ')) {
-      elements.push(<h1 key={i} className="text-2xl font-bold mb-6 pb-4" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>{line.slice(2)}</h1>)
-    } else if (line.startsWith('## ')) {
-      elements.push(<h2 key={i} className="text-lg font-semibold mt-8 mb-3" style={{ color: 'var(--text-primary)' }}>{line.slice(3)}</h2>)
-    } else if (line.startsWith('### ')) {
-      elements.push(<h3 key={i} className="text-base font-semibold mt-4 mb-2" style={{ color: 'var(--text-secondary)' }}>{line.slice(4)}</h3>)
-    } else if (line.match(/^\d+\.\s/)) {
-      elements.push(
-        <div key={i} className="flex gap-3 mb-2">
-          <span className="shrink-0 font-medium" style={{ color: 'var(--text-muted)' }}>{line.match(/^\d+/)![0]}.</span>
-          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{line.replace(/^\d+\.\s/, '')}</p>
-        </div>
-      )
-    } else if (line.startsWith('- ') || line.startsWith('* ')) {
-      elements.push(
-        <div key={i} className="flex gap-3 mb-1.5 ml-2">
-          <span className="shrink-0 mt-1.5" style={{ color: 'var(--text-muted)' }}>•</span>
-          <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{line.slice(2)}</p>
-        </div>
-      )
-    } else if (line.startsWith('---')) {
-      elements.push(<hr key={i} className="my-6" style={{ borderColor: 'var(--border)' }} />)
-    } else if (line.startsWith('*') && line.endsWith('*')) {
-      elements.push(<p key={i} className="text-xs italic mt-4" style={{ color: 'var(--text-muted)' }}>{line.replace(/^\*|\*$/g, '')}</p>)
-    } else if (line.trim() === '') {
-      elements.push(<div key={i} className="h-2" />)
-    } else {
-      elements.push(<p key={i} className="leading-relaxed mb-1" style={{ color: 'var(--text-secondary)' }}>{line}</p>)
-    }
-  })
-
-  return elements
-}
-
-export default function ManuscriptClient({ project, processedCount, initialManuscript, manuscriptGeneratedAt, readOnly }: Props) {
+export default function ManuscriptClient({
+  project,
+  processedCount,
+  initialManuscript,
+  manuscriptGeneratedAt,
+  readOnly,
+  isSuperAdmin,
+  initialShareToken,
+  initialShareEnabled,
+}: Props) {
   const [manuscript, setManuscript] = useState(initialManuscript)
   const [generatedAt, setGeneratedAt] = useState(manuscriptGeneratedAt)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [view, setView] = useState<'rendered' | 'raw'>('rendered')
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showShare, setShowShare] = useState(false)
+  const [shareEnabled, setShareEnabled] = useState(initialShareEnabled ?? false)
+  const [shareToken, setShareToken] = useState(initialShareToken ?? null)
+  const [sharingLoading, setSharingLoading] = useState(false)
+  const [origin, setOrigin] = useState('')
   const router = useRouter()
+
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
 
   async function handleGenerate() {
     setShowConfirm(false)
@@ -99,6 +82,27 @@ export default function ManuscriptClient({ project, processedCount, initialManus
     URL.revokeObjectURL(url)
   }
 
+  async function handleToggleShare(enable: boolean) {
+    setSharingLoading(true)
+    const response = await fetch(`/api/projects/${project.id}/share`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: enable }),
+    })
+    if (response.ok) {
+      const { shareToken: token, shareEnabled: enabled } = await response.json()
+      setShareToken(token)
+      setShareEnabled(enabled)
+    }
+    setSharingLoading(false)
+  }
+
+  function handleCopyShareLink() {
+    if (shareToken) navigator.clipboard.writeText(`${origin}/share/${shareToken}`)
+  }
+
+  const shareUrl = shareToken ? `${origin}/share/${shareToken}` : ''
+
   return (
     <div className="space-y-6">
       {/* Controls */}
@@ -130,6 +134,15 @@ export default function ManuscriptClient({ project, processedCount, initialManus
               >
                 Export .docx
               </button>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setShowShare(true)}
+                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
+                  style={shareEnabled ? { color: 'var(--blue)', borderColor: 'var(--blue)' } : {}}
+                >
+                  {shareEnabled ? 'Shared' : 'Share'}
+                </button>
+              )}
               {!readOnly && (
                 <button
                   onClick={() => setView(v => v === 'rendered' ? 'raw' : 'rendered')}
@@ -190,6 +203,48 @@ export default function ManuscriptClient({ project, processedCount, initialManus
         </div>
       )}
 
+      {/* Share modal */}
+      {showShare && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+          <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>Share Manuscript</h3>
+            <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
+              {shareEnabled
+                ? 'Anyone with the link can view this manuscript without logging in.'
+                : 'Enable a public link so anyone can view this manuscript without logging in.'}
+            </p>
+            {shareEnabled && shareUrl && (
+              <div className="flex gap-2 mb-4">
+                <input
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 text-xs px-3 py-2 rounded-lg font-mono"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+                />
+                <button onClick={handleCopyShareLink} className="dark-btn-outline px-3 py-2 text-sm rounded-lg shrink-0">
+                  Copy
+                </button>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowShare(false)}
+                className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => handleToggleShare(!shareEnabled)}
+                disabled={sharingLoading}
+                className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50"
+              >
+                {sharingLoading ? 'Saving...' : shareEnabled ? 'Disable sharing' : 'Enable sharing'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="rounded-xl px-5 py-4 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>{error}</div>
       )}
@@ -212,9 +267,7 @@ export default function ManuscriptClient({ project, processedCount, initialManus
       {manuscript && !generating && (
         <div className="dark-card rounded-xl p-10">
           {view === 'rendered' || readOnly ? (
-            <div className="prose-reframe">
-              {renderManuscript(manuscript)}
-            </div>
+            <ManuscriptRenderer text={manuscript} />
           ) : (
             <textarea
               value={manuscript}
