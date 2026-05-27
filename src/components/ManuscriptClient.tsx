@@ -36,6 +36,7 @@ export default function ManuscriptClient({
   const [shareEnabled, setShareEnabled] = useState(initialShareEnabled ?? false)
   const [shareToken, setShareToken] = useState(initialShareToken ?? null)
   const [sharingLoading, setSharingLoading] = useState(false)
+  const [shareError, setShareError] = useState('')
   const [origin, setOrigin] = useState('')
   const router = useRouter()
 
@@ -84,6 +85,7 @@ export default function ManuscriptClient({
 
   async function handleToggleShare(enable: boolean) {
     setSharingLoading(true)
+    setShareError('')
     const response = await fetch(`/api/projects/${project.id}/share`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -93,6 +95,9 @@ export default function ManuscriptClient({
       const { shareToken: token, shareEnabled: enabled } = await response.json()
       setShareToken(token)
       setShareEnabled(enabled)
+    } else {
+      const body = await response.json().catch(() => ({}))
+      setShareError(body.error ?? 'Failed to update sharing')
     }
     setSharingLoading(false)
   }
@@ -225,6 +230,9 @@ export default function ManuscriptClient({
                   Copy
                 </button>
               </div>
+            )}
+            {shareError && (
+              <p className="text-xs mb-3" style={{ color: '#f87171' }}>{shareError}</p>
             )}
             <div className="flex gap-3">
               <button
