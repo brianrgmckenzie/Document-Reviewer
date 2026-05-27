@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
-import ManuscriptRenderer from '@/components/ManuscriptRenderer'
+import ShareClient from '@/components/ShareClient'
 
 async function getProject(token: string) {
   const admin = createAdminClient()
@@ -54,16 +54,8 @@ export default async function SharePage({ params }: { params: Promise<{ token: s
           )}
         </div>
       </header>
-      <main className="max-w-4xl mx-auto px-6 py-10 space-y-6">
-        {project.audio_url && (
-          <div className="dark-card rounded-xl p-5">
-            <p className="text-xs font-medium mb-3" style={{ color: 'var(--text-muted)' }}>PODCAST AUDIO</p>
-            <audio controls className="w-full" src={project.audio_url} />
-          </div>
-        )}
-        <div className="dark-card rounded-xl p-10">
-          <ManuscriptRenderer text={project.manuscript} />
-        </div>
+      <main className="max-w-4xl mx-auto px-6 py-10">
+        <ShareClient manuscript={project.manuscript} audioUrl={project.audio_url ?? null} />
       </main>
     </div>
   )
