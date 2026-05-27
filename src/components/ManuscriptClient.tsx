@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { exportManuscriptToDocx } from '@/lib/exportDocx'
 import ManuscriptRenderer from '@/components/ManuscriptRenderer'
+import { Copy, FileDown, Share2, Code, RefreshCw, Play, Square, Link } from 'lucide-react'
 
 interface Props {
   project: { id: string; name: string; client_name: string }
@@ -38,11 +39,44 @@ export default function ManuscriptClient({
   const [sharingLoading, setSharingLoading] = useState(false)
   const [shareError, setShareError] = useState('')
   const [origin, setOrigin] = useState('')
+  const [listening, setListening] = useState(false)
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     setOrigin(window.location.origin)
   }, [])
+
+  useEffect(() => {
+    return () => { window.speechSynthesis?.cancel() }
+  }, [])
+
+  function stripMarkdown(text: string) {
+    return text
+      .replace(/^#{1,3}\s+/gm, '')
+      .replace(/^\s*[-*]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .replace(/^---+$/gm, '')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
+
+  function handleListen() {
+    if (listening) {
+      window.speechSynthesis.cancel()
+      setListening(false)
+      return
+    }
+    if (!manuscript) return
+    const utterance = new SpeechSynthesisUtterance(stripMarkdown(manuscript))
+    utterance.rate = 0.95
+    utterance.onend = () => setListening(false)
+    utterance.onerror = () => setListening(false)
+    utteranceRef.current = utterance
+    window.speechSynthesis.speak(utterance)
+    setListening(true)
+  }
 
   async function handleGenerate() {
     setShowConfirm(false)
@@ -129,30 +163,42 @@ export default function ManuscriptClient({
             <>
               <button
                 onClick={handleCopy}
-                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
+                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5"
               >
+                <Copy size={14} />
                 Copy
               </button>
               <button
                 onClick={handleExportDocx}
-                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
+                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5"
               >
-                Export .docx
+                <FileDown size={14} />
+                Export
+              </button>
+              <button
+                onClick={handleListen}
+                className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5"
+                style={listening ? { color: 'var(--blue)', borderColor: 'var(--blue)' } : {}}
+              >
+                {listening ? <Square size={14} /> : <Play size={14} />}
+                {listening ? 'Stop' : 'Listen'}
               </button>
               {isSuperAdmin && (
                 <button
                   onClick={() => setShowShare(true)}
-                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
+                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5"
                   style={shareEnabled ? { color: 'var(--blue)', borderColor: 'var(--blue)' } : {}}
                 >
+                  {shareEnabled ? <Link size={14} /> : <Share2 size={14} />}
                   {shareEnabled ? 'Shared' : 'Share'}
                 </button>
               )}
               {!readOnly && (
                 <button
                   onClick={() => setView(v => v === 'rendered' ? 'raw' : 'rendered')}
-                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg"
+                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5"
                 >
+                  <Code size={14} />
                   {view === 'rendered' ? 'Raw' : 'Rendered'}
                 </button>
               )}
@@ -162,8 +208,9 @@ export default function ManuscriptClient({
             <button
               onClick={() => setShowConfirm(true)}
               disabled={generating || processedCount === 0}
-              className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50"
+              className="dark-btn-primary px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:opacity-50 flex items-center gap-1.5"
             >
+              <RefreshCw size={14} />
               {generating ? 'Generating...' : manuscript ? 'Regenerate' : 'Generate Manuscript'}
             </button>
           )}
