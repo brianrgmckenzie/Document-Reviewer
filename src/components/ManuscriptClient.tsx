@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { exportManuscriptToDocx } from '@/lib/exportDocx'
 import ManuscriptRenderer from '@/components/ManuscriptRenderer'
-import { Copy, FileDown, Share2, Code, RefreshCw, Play, Square, Link } from 'lucide-react'
+import { Copy, FileDown, Share2, Code, RefreshCw, Play, Square, Link, Headphones, Upload, Trash2 } from 'lucide-react'
 
 interface Props {
   project: { id: string; name: string; client_name: string }
@@ -15,6 +15,7 @@ interface Props {
   isSuperAdmin?: boolean
   initialShareToken?: string | null
   initialShareEnabled?: boolean
+  initialAudioUrl?: string | null
 }
 
 export default function ManuscriptClient({
@@ -26,6 +27,7 @@ export default function ManuscriptClient({
   isSuperAdmin,
   initialShareToken,
   initialShareEnabled,
+  initialAudioUrl,
 }: Props) {
   const [manuscript, setManuscript] = useState(initialManuscript)
   const [generatedAt, setGeneratedAt] = useState(manuscriptGeneratedAt)
@@ -41,6 +43,10 @@ export default function ManuscriptClient({
   const [origin, setOrigin] = useState('')
   const [listening, setListening] = useState(false)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const [audioUrl, setAudioUrl] = useState(initialAudioUrl ?? null)
+  const [audioUploading, setAudioUploading] = useState(false)
+  const [audioError, setAudioError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -134,6 +140,30 @@ export default function ManuscriptClient({
       setShareError(body.error ?? 'Failed to update sharing')
     }
     setSharingLoading(false)
+  }
+
+  async function handleAudioUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAudioUploading(true)
+    setAudioError('')
+    const form = new FormData()
+    form.append('file', file)
+    const response = await fetch(`/api/projects/${project.id}/audio`, { method: 'POST', body: form })
+    if (response.ok) {
+      const { audioUrl: url } = await response.json()
+      setAudioUrl(url)
+    } else {
+      const body = await response.json().catch(() => ({}))
+      setAudioError(body.error ?? 'Upload failed')
+    }
+    setAudioUploading(false)
+    e.target.value = ''
+  }
+
+  async function handleAudioDelete() {
+    const response = await fetch(`/api/projects/${project.id}/audio`, { method: 'DELETE' })
+    if (response.ok) setAudioUrl(null)
   }
 
   function handleCopyShareLink() {
@@ -302,6 +332,49 @@ export default function ManuscriptClient({
 
       {error && (
         <div className="rounded-xl px-5 py-4 text-sm" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>{error}</div>
+      )}
+
+      {/* Podcast audio */}
+      {(isSuperAdmin || audioUrl) && manuscript && !generating && (
+        <div className="dark-card rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Headphones size={15} style={{ color: 'var(--text-muted)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Podcast Audio</span>
+              {!audioUrl && isSuperAdmin && (
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Upload a NotebookLM audio file to share alongside this manuscript</span>
+              )}
+            </div>
+            {isSuperAdmin && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={audioUploading}
+                  className="dark-btn-outline px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Upload size={13} />
+                  {audioUploading ? 'Uploading...' : audioUrl ? 'Replace' : 'Upload'}
+                </button>
+                {audioUrl && (
+                  <button
+                    onClick={handleAudioDelete}
+                    className="dark-btn-outline px-2 py-1.5 text-sm rounded-lg flex items-center"
+                    style={{ color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {audioError && <p className="text-xs mb-2" style={{ color: '#f87171' }}>{audioError}</p>}
+          {audioUrl ? (
+            <audio controls className="w-full" src={audioUrl} style={{ accentColor: 'var(--blue)' }} />
+          ) : (
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No audio uploaded yet.</p>
+          )}
+          <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={handleAudioUpload} />
+        </div>
       )}
 
       {!readOnly && processedCount === 0 && !manuscript && (

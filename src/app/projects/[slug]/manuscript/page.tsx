@@ -55,6 +55,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
           isSuperAdmin={isSuperAdmin && !isImpersonating}
           initialShareToken={project.share_token ?? null}
           initialShareEnabled={project.share_enabled ?? false}
+          initialAudioUrl={project.audio_url ?? null}
         />
       </main>
     </div>

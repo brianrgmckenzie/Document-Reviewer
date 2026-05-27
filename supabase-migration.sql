@@ -107,3 +107,8 @@ alter table projects add column if not exists share_token uuid;
 alter table projects add column if not exists share_enabled boolean default false;
 -- Backfill tokens for existing projects
 update projects set share_token = uuid_generate_v4() where share_token is null;
+
+-- ── projects: podcast audio ───────────────────────────────────────────────────
+alter table projects add column if not exists audio_url text;
+-- Also create a public storage bucket named 'audio' in the Supabase dashboard
+-- (Storage → New bucket → name: audio → Public: on)
