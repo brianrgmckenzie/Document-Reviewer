@@ -101,3 +101,9 @@ create policy if not exists "Users can update own profile"
 -- Converts existing string arrays to JSONB. Old string values are preserved
 -- as-is; new AI processing will write {quote, significance} objects.
 alter table documents alter column key_extracts type jsonb using to_jsonb(key_extracts);
+
+-- ── projects: shareable link ──────────────────────────────────────────────────
+alter table projects add column if not exists share_token uuid;
+alter table projects add column if not exists share_enabled boolean default false;
+-- Backfill tokens for existing projects
+update projects set share_token = uuid_generate_v4() where share_token is null;
