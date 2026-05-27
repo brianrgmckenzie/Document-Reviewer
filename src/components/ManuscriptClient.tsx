@@ -147,15 +147,47 @@ export default function ManuscriptClient({
     if (!file) return
     setAudioUploading(true)
     setAudioError('')
-    const form = new FormData()
-    form.append('file', file)
-    const response = await fetch(`/api/projects/${project.id}/audio`, { method: 'POST', body: form })
-    if (response.ok) {
-      const { audioUrl: url } = await response.json()
-      setAudioUrl(url)
-    } else {
-      const body = await response.json().catch(() => ({}))
+
+    // Step 1: get a signed upload URL (file never touches our server)
+    const ext = file.name.split('.').pop() ?? 'mp3'
+    const urlRes = await fetch(`/api/projects/${project.id}/audio/upload-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ext }),
+    })
+    if (!urlRes.ok) {
+      const body = await urlRes.json().catch(() => ({}))
       setAudioError(body.error ?? 'Upload failed')
+      setAudioUploading(false)
+      e.target.value = ''
+      return
+    }
+    const { signedUrl, publicUrl } = await urlRes.json()
+
+    // Step 2: upload directly to Supabase Storage
+    const uploadRes = await fetch(signedUrl, {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type },
+    })
+    if (!uploadRes.ok) {
+      setAudioError('Storage upload failed — check bucket permissions')
+      setAudioUploading(false)
+      e.target.value = ''
+      return
+    }
+
+    // Step 3: save the public URL to the project
+    const saveRes = await fetch(`/api/projects/${project.id}/audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioUrl: publicUrl }),
+    })
+    if (saveRes.ok) {
+      setAudioUrl(publicUrl)
+    } else {
+      const body = await saveRes.json().catch(() => ({}))
+      setAudioError(body.error ?? 'Failed to save audio URL')
     }
     setAudioUploading(false)
     e.target.value = ''
