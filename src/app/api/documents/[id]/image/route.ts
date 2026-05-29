@@ -37,7 +37,10 @@ export async function POST(
     .from('document-images')
     .upload(path, buffer, { contentType: 'image/jpeg', upsert: true })
 
-  if (storageError) return NextResponse.json({ error: storageError.message }, { status: 500 })
+  if (storageError) {
+    console.error('Upload document image error:', storageError)
+    return NextResponse.json({ error: 'Failed to upload image' }, { status: 500 })
+  }
 
   const { data: { publicUrl } } = admin.storage.from('document-images').getPublicUrl(path)
   const urlWithBust = `${publicUrl}?t=${Date.now()}`
@@ -47,7 +50,10 @@ export async function POST(
     .update({ image_url: urlWithBust })
     .eq('id', id)
 
-  if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 })
+  if (dbError) {
+    console.error('Update document image error:', dbError)
+    return NextResponse.json({ error: 'Failed to update image' }, { status: 500 })
+  }
 
   return NextResponse.json({ url: urlWithBust })
 }

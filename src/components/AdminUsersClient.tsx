@@ -58,7 +58,14 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
     setLoading(false)
   }
 
-  useEffect(() => { loadUsers() }, [])
+  useEffect(() => {
+    let mounted = true
+    const init = async () => {
+      if (mounted) await loadUsers()
+    }
+    init()
+    return () => { mounted = false }
+  }, [])
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()

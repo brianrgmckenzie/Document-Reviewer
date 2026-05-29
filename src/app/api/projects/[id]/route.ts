@@ -34,7 +34,10 @@ export async function DELETE(
   await admin.from('project_members').delete().eq('project_id', id)
   const { error } = await admin.from('projects').delete().eq('id', id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Delete project error:', error)
+    return NextResponse.json({ error: 'Failed to delete project' }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }
 
@@ -67,7 +70,10 @@ export async function PATCH(
   const admin = createAdminClient()
   const { error } = await admin.from('projects').update(update).eq('id', id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Update project error:', error)
+    return NextResponse.json({ error: 'Failed to update project' }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }

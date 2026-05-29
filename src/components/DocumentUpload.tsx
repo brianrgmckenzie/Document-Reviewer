@@ -29,7 +29,8 @@ export default function DocumentUpload({ projectId }: Props) {
     if (!user) return
 
     // Upload to Supabase Storage
-    const filePath = `${projectId}/${Date.now()}-${file.name}`
+    const ts = new Date().getTime()
+    const filePath = `${projectId}/${ts}-${file.name}`
     const { error: storageError } = await supabase.storage
       .from('documents')
       .upload(filePath, file)
@@ -128,7 +129,8 @@ export default function DocumentUpload({ projectId }: Props) {
     if (!user) return
 
     const label = pasteTitle.trim() || 'Pasted content'
-    const fileName = `${label.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${Date.now()}.txt`
+    const ts = new Date().getTime()
+    const fileName = `${label.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${ts}.txt`
     const filePath = `${projectId}/${fileName}`
     const blob = new Blob([content], { type: 'text/plain' })
 

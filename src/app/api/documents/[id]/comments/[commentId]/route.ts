@@ -25,7 +25,10 @@ export async function DELETE(
   if (comment.user_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { error } = await admin.from('document_comments').delete().eq('id', commentId)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Delete comment error:', error)
+    return NextResponse.json({ error: 'Failed to delete comment' }, { status: 500 })
+  }
 
   return NextResponse.json({ success: true })
 }

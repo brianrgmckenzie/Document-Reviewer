@@ -69,7 +69,7 @@ function parseMarkdownToDocx(markdown: string): Paragraph[] {
   return paragraphs
 }
 
-export async function exportManuscriptToDocx(manuscript: string, clientName: string): Promise<Blob> {
+export async function exportManuscriptToDocx(manuscript: string): Promise<Blob> {
   const doc = new Document({
     styles: {
       default: {

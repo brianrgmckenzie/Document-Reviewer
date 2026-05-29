@@ -144,7 +144,7 @@ export default function SearchModal({ projectId, projectSlug, suppressedWords: i
             <div className="overflow-y-auto flex-1">
               {searched && results.length === 0 && (
                 <div className="text-center py-12 text-gray-400 text-sm">
-                  No documents matched "{filteredQuery || query}"
+                  No documents matched &quot;{filteredQuery || query}&quot;
                 </div>
               )}
 

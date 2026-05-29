@@ -46,15 +46,15 @@ export async function POST(request: NextRequest) {
       const memberIds = (members ?? []).map((m: { user_id: string }) => m.user_id)
       const { data: memberRoles } = await admin.from('user_roles').select('user_id, role').in('user_id', memberIds)
       const staffMemberIds = new Set(
-        (memberRoles ?? []).filter((r: any) => r.role !== 'client').map((r: any) => r.user_id as string)
+        (memberRoles ?? []).filter((r: { role: string }) => r.role !== 'client').map((r: { user_id: string }) => r.user_id)
       )
 
       const notifyIds = new Set([...superAdminIds, ...staffMemberIds])
       notifyIds.delete(user.id)
 
       const recipientEmails = authUsers
-        .filter((u: any) => notifyIds.has(u.id) && u.email)
-        .map((u: any) => u.email as string)
+        .filter((u: { id: string; email?: string | null }) => notifyIds.has(u.id) && u.email)
+        .map((u: { email?: string | null }) => u.email as string)
 
       if (recipientEmails.length > 0) {
         await sendUploadNotification({

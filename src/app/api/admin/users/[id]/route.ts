@@ -32,7 +32,10 @@ export async function PATCH(
       const { error } = await admin
         .from('user_roles')
         .upsert({ user_id: id, role }, { onConflict: 'user_id' })
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      if (error) {
+        console.error('Update user role error:', error)
+        return NextResponse.json({ error: 'Failed to update user role' }, { status: 500 })
+      }
     } else {
       await admin.from('user_roles').delete().eq('user_id', id)
     }
