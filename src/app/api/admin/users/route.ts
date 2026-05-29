@@ -65,6 +65,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  // Verify company_admin still has an active company membership
+  if (isCompanyAdmin) {
+    const admin = createAdminClient()
+    const { data: membership } = await admin
+      .from('company_members')
+      .select('id')
+      .eq('user_id', caller.user.id)
+      .eq('role', 'admin')
+      .limit(1)
+      .single()
+    if (!membership) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const { email, password, role, first_name, last_name, organization } = await request.json()
   if (!email || !password) {
     return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
