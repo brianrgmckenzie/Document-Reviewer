@@ -143,7 +143,7 @@ export async function sendWelcomeStaff({
   role: string
   tempPassword: string
 }) {
-  const roleLabel = role === 'super_admin' ? 'Super Admin' : 'Project Admin'
+  const roleLabel = role === 'super_admin' ? 'Super Admin' : role === 'company_admin' ? 'Company Admin' : 'Project Admin'
 
   await getResend().emails.send({
     from: FROM,

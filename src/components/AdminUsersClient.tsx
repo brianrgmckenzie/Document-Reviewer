@@ -194,8 +194,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
     return <div className="text-sm py-8 text-center" style={{ color: 'var(--text-muted)' }}>Loading users...</div>
   }
 
-  const showProjectAssignment = (role: string | null) => role === 'project_admin' || role === 'client'
-  const inviteRoleNeedsProjects = inviteForm.role === 'project_admin' || inviteForm.role === 'client'
+  const showProjectAssignment = (role: string | null) => role === 'client'
+  const inviteRoleNeedsProjects = inviteForm.role === 'client'
   const inviteUnassigned = projects.filter(p => !inviteProjects.includes(p.id))
 
   return (
@@ -248,7 +248,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                     >
                       <option value="">No role</option>
                       <option value="super_admin">Super Admin</option>
-                      <option value="project_admin">Project Admin</option>
+                      <option value="company_admin">Company Admin</option>
                       <option value="client">Client</option>
                     </select>
                   </div>
@@ -442,8 +442,8 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                 <select value={inviteForm.role}
                   onChange={e => { setInviteForm({ ...inviteForm, role: e.target.value }); setInviteProjects([]) }}
                   className="dark-select w-full px-3 py-2 rounded-lg text-sm outline-none">
-                  <option value="client">Client — project status, documents, comments</option>
-                  <option value="project_admin">Project Admin — upload and CRAAP scoring</option>
+                  <option value="client">Client — upload documents, view project</option>
+                  <option value="company_admin">Company Admin — manage projects and members</option>
                   <option value="super_admin">Super Admin — full access</option>
                 </select>
               </div>
