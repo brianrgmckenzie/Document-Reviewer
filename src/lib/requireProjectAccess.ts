@@ -1,9 +1,5 @@
 import { createAdminClient } from './supabase/admin'
 
-/**
- * Returns true if the user may access the given project.
- * Super-admins always pass. Everyone else must be a project member.
- */
 export async function requireProjectAccess(
   userId: string,
   projectId: string,
@@ -12,19 +8,37 @@ export async function requireProjectAccess(
   if (role === 'super_admin') return true
 
   const admin = createAdminClient()
-  const { data } = await admin
+
+  // Direct project membership
+  const { data: member } = await admin
     .from('project_members')
     .select('id')
     .eq('user_id', userId)
     .eq('project_id', projectId)
     .single()
+  if (member) return true
 
-  return !!data
+  // Company admin access via project's company
+  const { data: project } = await admin
+    .from('projects')
+    .select('company_id')
+    .eq('id', projectId)
+    .single()
+
+  if (project?.company_id) {
+    const { data: companyMember } = await admin
+      .from('company_members')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('company_id', project.company_id)
+      .eq('role', 'admin')
+      .single()
+    if (companyMember) return true
+  }
+
+  return false
 }
 
-/**
- * Resolves the project_id for a document, then checks access.
- */
 export async function requireProjectAccessByDocument(
   userId: string,
   documentId: string,
@@ -41,12 +55,6 @@ export async function requireProjectAccessByDocument(
 
   if (!doc) return { allowed: false, projectId: null }
 
-  const { data: member } = await admin
-    .from('project_members')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('project_id', doc.project_id)
-    .single()
-
-  return { allowed: !!member, projectId: doc.project_id }
+  const allowed = await requireProjectAccess(userId, doc.project_id, role)
+  return { allowed, projectId: doc.project_id }
 }

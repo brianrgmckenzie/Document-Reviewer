@@ -11,9 +11,10 @@ interface AppNavProps {
   email?: string
   breadcrumbs?: Breadcrumb[]
   isSuperAdmin?: boolean
+  isCompanyAdmin?: boolean
 }
 
-export default function AppNav({ email, breadcrumbs, isSuperAdmin }: AppNavProps) {
+export default function AppNav({ email, breadcrumbs, isSuperAdmin, isCompanyAdmin }: AppNavProps) {
   return (
     <header className="app-nav">
       <div className="max-w-6xl mx-auto px-6 h-full flex items-center justify-between">
@@ -49,8 +50,18 @@ export default function AppNav({ email, breadcrumbs, isSuperAdmin }: AppNavProps
 
         <div className="flex items-center gap-4 shrink-0">
           {isSuperAdmin && (
-            <Link href="/admin/users" className="nav-crumb-link" style={{ fontSize: 13 }}>
-              Users
+            <>
+              <Link href="/admin/companies" className="nav-crumb-link" style={{ fontSize: 13 }}>
+                Companies
+              </Link>
+              <Link href="/admin/users" className="nav-crumb-link" style={{ fontSize: 13 }}>
+                Users
+              </Link>
+            </>
+          )}
+          {isCompanyAdmin && (
+            <Link href="/admin/members" className="nav-crumb-link" style={{ fontSize: 13 }}>
+              Members
             </Link>
           )}
           {email && (

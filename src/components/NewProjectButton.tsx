@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 const PROJECT_TYPES = [
@@ -11,20 +11,35 @@ const PROJECT_TYPES = [
   'Other',
 ]
 
-export default function NewProjectButton() {
+interface Props {
+  isSuperAdmin?: boolean
+  defaultCompanyId?: string
+}
+
+export default function NewProjectButton({ isSuperAdmin, defaultCompanyId }: Props) {
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([])
   const [form, setForm] = useState({
     name: '',
     client_name: '',
     description: '',
     project_type: '',
+    company_id: defaultCompanyId ?? '',
   })
   const router = useRouter()
 
+  useEffect(() => {
+    if (open && isSuperAdmin) {
+      fetch('/api/companies')
+        .then(r => r.json())
+        .then(d => setCompanies(d.companies ?? []))
+    }
+  }, [open, isSuperAdmin])
+
   function reset() {
-    setForm({ name: '', client_name: '', description: '', project_type: '' })
+    setForm({ name: '', client_name: '', description: '', project_type: '', company_id: defaultCompanyId ?? '' })
     setError('')
     setOpen(false)
   }
@@ -66,6 +81,24 @@ export default function NewProjectButton() {
             <h3 className="text-lg font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>New Project</h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSuperAdmin && (
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Company
+                  </label>
+                  <select
+                    value={form.company_id}
+                    onChange={e => setForm({ ...form, company_id: e.target.value })}
+                    className="dark-select w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  >
+                    <option value="">No company</option>
+                    {companies.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                   Project Name <span style={{ color: '#f87171' }}>*</span>

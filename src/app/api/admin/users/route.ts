@@ -3,18 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendWelcomeClient, sendWelcomeStaff } from '@/lib/email'
 
-async function requireSuperAdmin() {
+async function getCallerAndRole() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   const admin = createAdminClient()
   const { data } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
-  if (data?.role !== 'super_admin') return null
-  return user
+  return { user, role: data?.role ?? null }
 }
 
 export async function GET() {
-  if (!await requireSuperAdmin()) {
+  const caller = await getCallerAndRole()
+  if (!caller || caller.role !== 'super_admin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -55,13 +55,25 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!await requireSuperAdmin()) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const caller = await getCallerAndRole()
+  if (!caller) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const isSuperAdmin = caller.role === 'super_admin'
+  const isCompanyAdmin = caller.role === 'company_admin'
+
+  if (!isSuperAdmin && !isCompanyAdmin) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const { email, password, role, first_name, last_name, organization } = await request.json()
-  if (!email || !password || !role) {
-    return NextResponse.json({ error: 'Email, password, and role are required' }, { status: 400 })
+  if (!email || !password) {
+    return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+  }
+
+  // Company admins can only create client (project member) accounts
+  const assignedRole = isCompanyAdmin ? 'client' : (role ?? 'client')
+  if (isCompanyAdmin && role && role !== 'client') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const admin = createAdminClient()
@@ -76,7 +88,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error?.message ?? 'Failed to create user' }, { status: 500 })
   }
 
-  await admin.from('user_roles').insert({ user_id: user.id, role })
+  await admin.from('user_roles').insert({ user_id: user.id, role: assignedRole })
 
   if (first_name || last_name || organization) {
     await admin.from('user_profiles').insert({
@@ -88,11 +100,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (user.email) {
-    const send = role === 'client'
+    const send = assignedRole === 'client'
       ? sendWelcomeClient({ to: user.email, tempPassword: password })
-      : sendWelcomeStaff({ to: user.email, role, tempPassword: password })
+      : sendWelcomeStaff({ to: user.email, role: assignedRole, tempPassword: password })
     send.catch(err => console.error('Welcome email failed:', err))
   }
 
-  return NextResponse.json({ user: { id: user.id, email: user.email, role } })
+  return NextResponse.json({ user: { id: user.id, email: user.email, role: assignedRole } })
 }

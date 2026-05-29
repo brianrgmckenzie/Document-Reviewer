@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getUserCompanies } from '@/lib/auth/role'
 
 function toSlug(name: string): string {
   return name
@@ -19,13 +20,33 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient()
   const { data: roleData } = await admin.from('user_roles').select('role').eq('user_id', user.id).single()
-  if (roleData?.role !== 'super_admin') {
+  const role = roleData?.role
+
+  if (role !== 'super_admin' && role !== 'company_admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { name, client_name, description, project_type } = await request.json()
+  const { name, client_name, description, project_type, company_id } = await request.json()
   if (!name?.trim() || !client_name?.trim()) {
     return NextResponse.json({ error: 'Name and client name are required' }, { status: 400 })
+  }
+
+  // Validate company_id
+  let resolvedCompanyId: string | null = company_id ?? null
+
+  if (role === 'company_admin') {
+    const companies = await getUserCompanies(user.id)
+    if (companies.length === 0) {
+      return NextResponse.json({ error: 'No company assigned' }, { status: 403 })
+    }
+    // If company_id provided, verify they belong to it; otherwise use their first company
+    if (resolvedCompanyId) {
+      if (!companies.some(c => c.id === resolvedCompanyId)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    } else {
+      resolvedCompanyId = companies[0].id
+    }
   }
 
   // Generate a unique slug
@@ -47,6 +68,7 @@ export async function POST(request: NextRequest) {
       project_type: project_type?.trim() || null,
       slug,
       created_by: user.id,
+      company_id: resolvedCompanyId,
       status: 'intake',
     })
     .select()

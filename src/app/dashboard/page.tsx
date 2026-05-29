@@ -37,12 +37,26 @@ export default async function DashboardPage() {
   const session = await getEffectiveSession(user.id, user.email ?? '', realRole)
   const { role, userId: effectiveUserId, isImpersonating } = session
   const isSuperAdmin = role === 'super_admin'
+  const isCompanyAdmin = role === 'company_admin'
 
   let projects: Project[] = []
+  let userCompanies: { id: string; name: string; slug: string }[] = []
 
   if (isSuperAdmin && !isImpersonating) {
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
     projects = data ?? []
+  } else if (isCompanyAdmin && !isImpersonating) {
+    const { data: companyMemberships } = await admin
+      .from('company_members')
+      .select('company_id, companies(id, name, slug)')
+      .eq('user_id', effectiveUserId)
+      .eq('role', 'admin')
+    userCompanies = (companyMemberships ?? []).map((m: any) => m.companies).filter(Boolean)
+    const companyIds = userCompanies.map(c => c.id)
+    if (companyIds.length > 0) {
+      const { data } = await admin.from('projects').select('*').in('company_id', companyIds).order('created_at', { ascending: false })
+      projects = data ?? []
+    }
   } else {
     const { data: memberships } = await admin.from('project_members').select('project_id').eq('user_id', effectiveUserId)
     const projectIds = memberships?.map((m: { project_id: string }) => m.project_id) ?? []
@@ -57,7 +71,7 @@ export default async function DashboardPage() {
   let totalUnreviewed = 0
   let totalRiskProjects = 0
 
-  if (isSuperAdmin && projects.length > 0) {
+  if ((isSuperAdmin || isCompanyAdmin) && projects.length > 0) {
     const projectIds = projects.map(p => p.id)
     const { data: docs } = await admin
       .from('documents')
@@ -84,12 +98,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen fade-up" style={{ background: 'var(--background)' }}>
-      <AppNav email={user.email} isSuperAdmin={isSuperAdmin} />
+      <AppNav email={user.email} isSuperAdmin={isSuperAdmin} isCompanyAdmin={isCompanyAdmin} />
 
       <main className="max-w-6xl mx-auto px-6 py-10">
 
-        {/* Stats bar — super_admin only */}
-        {isSuperAdmin && projects.length > 0 && (
+        {/* Stats bar — super_admin and company_admin */}
+        {(isSuperAdmin || isCompanyAdmin) && projects.length > 0 && (
           <div className="dark-card mb-8 overflow-hidden" style={{ borderRadius: 14 }}>
             <div className="grid grid-cols-3">
               {/* Projects */}
@@ -149,7 +163,12 @@ export default async function DashboardPage() {
               </p>
             )}
           </div>
-          {isSuperAdmin && <NewProjectButton />}
+          {(isSuperAdmin || isCompanyAdmin) && (
+            <NewProjectButton
+              isSuperAdmin={isSuperAdmin}
+              defaultCompanyId={isCompanyAdmin && userCompanies.length === 1 ? userCompanies[0].id : undefined}
+            />
+          )}
         </div>
 
         {projects.length > 0 ? (
@@ -230,10 +249,10 @@ export default async function DashboardPage() {
           </div>
         ) : (
           <div className="text-center py-20 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            {isSuperAdmin ? (
+            {isSuperAdmin || isCompanyAdmin ? (
               <>
                 <p className="mb-5" style={{ color: 'var(--text-secondary)' }}>No projects yet.</p>
-                <NewProjectButton />
+                <NewProjectButton isSuperAdmin={isSuperAdmin} defaultCompanyId={isCompanyAdmin && userCompanies.length === 1 ? userCompanies[0].id : undefined} />
               </>
             ) : (
               <p style={{ color: 'var(--text-muted)' }}>No projects assigned to your account yet.</p>

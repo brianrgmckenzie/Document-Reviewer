@@ -103,6 +103,35 @@ export async function sendWelcomeClient({
 }
 
 // ---------------------------------------------------------------------------
+// Welcome — Company Admin
+// ---------------------------------------------------------------------------
+export async function sendWelcomeCompanyAdmin({
+  to,
+  companyName,
+  tempPassword,
+}: {
+  to: string
+  companyName: string
+  tempPassword: string
+}) {
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `Your ${companyName} account is ready`,
+    html: layout(`
+      ${h1('Welcome.')}
+      ${p(`Your account has been set up with <strong>Company Admin</strong> access for <strong>${companyName}</strong>. You can create projects, upload documents, and manage your team members.`)}
+      ${divider()}
+      ${p('<strong>Login details</strong>')}
+      ${p(`Email: <strong>${to}</strong>`)}
+      ${p(`Temporary password: <strong style="font-family:monospace;background:#f3f4f6;padding:2px 6px;border-radius:4px;">${tempPassword}</strong>`)}
+      ${p('You can change your password after logging in.', true)}
+      ${btn(`${APP_URL}/login`, 'Sign in')}
+    `),
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Welcome — Staff
 // ---------------------------------------------------------------------------
 export async function sendWelcomeStaff({
