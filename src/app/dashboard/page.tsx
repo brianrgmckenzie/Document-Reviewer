@@ -61,7 +61,7 @@ export default async function DashboardPage() {
     const { data: memberships } = await admin.from('project_members').select('project_id').eq('user_id', effectiveUserId)
     const projectIds = memberships?.map((m: { project_id: string }) => m.project_id) ?? []
     if (projectIds.length > 0) {
-      const { data } = await supabase.from('projects').select('*').in('id', projectIds).order('created_at', { ascending: false })
+      const { data } = await admin.from('projects').select('*').in('id', projectIds).order('created_at', { ascending: false })
       projects = data ?? []
     }
   }
