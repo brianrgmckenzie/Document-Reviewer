@@ -97,6 +97,17 @@ export interface Document {
   updated_at: string
 }
 
+export interface SubProject {
+  id: string
+  project_id: string
+  name: string
+  description: string | null
+  slug: string
+  status: 'active' | 'complete' | 'archived'
+  created_at: string
+  updated_at: string
+}
+
 export interface DocumentConflict {
   id: string
   project_id: string

@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 
 interface Props {
   projectId: string
+  subProjectId?: string
 }
 
-export default function DocumentUpload({ projectId }: Props) {
+export default function DocumentUpload({ projectId, subProjectId }: Props) {
   const [open, setOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [done, setDone] = useState(false)
@@ -45,6 +46,7 @@ export default function DocumentUpload({ projectId }: Props) {
       .from('documents')
       .insert({
         project_id: projectId,
+        sub_project_id: subProjectId ?? null,
         uploaded_by: user.id,
         file_name: file.name,
         file_path: filePath,
@@ -147,6 +149,7 @@ export default function DocumentUpload({ projectId }: Props) {
       .from('documents')
       .insert({
         project_id: projectId,
+        sub_project_id: subProjectId ?? null,
         uploaded_by: user.id,
         file_name: fileName,
         file_path: filePath,

@@ -2,17 +2,21 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import DocumentUpload from '@/components/DocumentUpload'
-import DocumentCard from '@/components/DocumentCard'
-import CRAAPWeights from '@/components/CRAAPWeights'
-import SearchModal from '@/components/SearchModal'
 import ProjectImageUpload from '@/components/ProjectImageUpload'
 import ProjectStatusControl from '@/components/ProjectStatusControl'
 import ProjectNameEditor from '@/components/ProjectNameEditor'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
+import NewSubProjectButton from '@/components/NewSubProjectButton'
+import DocumentCard from '@/components/DocumentCard'
 import AppNav from '@/components/AppNav'
 import type { Document } from '@/lib/types'
 import { getEffectiveSession } from '@/lib/getEffectiveSession'
+
+const SUB_STATUS_STYLES: Record<string, { bg: string; color: string; label: string }> = {
+  active:   { bg: 'rgba(45,216,138,0.12)',  color: 'var(--success)',  label: 'Active' },
+  complete: { bg: 'var(--accent-dim)',       color: 'var(--accent)',   label: 'Complete' },
+  archived: { bg: 'rgba(100,116,139,0.15)', color: '#94a3b8',         label: 'Archived' },
+}
 
 const TIER_STYLES: Record<number, { bg: string; color: string }> = {
   1: { bg: 'rgba(168,85,247,0.15)',  color: '#c084fc' },
@@ -32,17 +36,6 @@ function parcaColor(total: number) {
   if (pct >= 0.7) return 'var(--success)'
   if (pct >= 0.45) return 'var(--warning)'
   return 'var(--risk)'
-}
-
-function projectInitials(name: string) {
-  return name.split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
-}
-
-const PROJECT_COLORS = ['#4f7cff', '#9b7dff', '#2dd88a', '#f5a623', '#ff4d4d', '#38bdf8']
-function projectColor(id: string) {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) & 0xffff
-  return PROJECT_COLORS[h % PROJECT_COLORS.length]
 }
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -69,11 +62,32 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
     if (!membership) notFound()
   }
 
-  const { data: documents } = await supabase
-    .from('documents').select('*').eq('project_id', project.id)
-    .order('authority_tier', { ascending: true }).order('document_date', { ascending: false })
+  // Fetch sub-projects with document counts (may be empty if migration not yet run)
+  const { data: subProjectsRaw } = await admin
+    .from('sub_projects')
+    .select('*, documents(count)')
+    .eq('project_id', project.id)
+    .order('created_at', { ascending: true })
 
-  const uploaderIds = [...new Set((documents ?? []).map((d: Document) => d.uploaded_by).filter(Boolean))] as string[]
+  const subProjects = (subProjectsRaw ?? []).map((sp: any) => ({
+    ...sp,
+    doc_count: sp.documents?.[0]?.count ?? 0,
+  }))
+
+  // Always fetch all documents — fallback for pre-migration projects
+  const { data: allDocuments } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('project_id', project.id)
+    .order('authority_tier', { ascending: true })
+    .order('document_date', { ascending: false })
+
+  // Documents without a sub_project_id are orphaned (pre-migration or unassigned)
+  const orphanedDocs = (allDocuments ?? []).filter((d: any) => !d.sub_project_id)
+
+  const totalDocs = subProjects.reduce((s: number, sp: any) => s + sp.doc_count, 0) + orphanedDocs.length
+
+  const uploaderIds = [...new Set(orphanedDocs.map((d: any) => d.uploaded_by).filter(Boolean))] as string[]
   const uploaderEmails: Record<string, string> = {}
   if (uploaderIds.length > 0) {
     const { data: { users: authUsers } } = await admin.auth.admin.listUsers({ perPage: 1000 })
@@ -83,6 +97,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   // ── CLIENT VIEW ──────────────────────────────────────────────────────────
   if (isClient) {
     const isComplete = project.status === 'complete'
+    const orphanedByTier: Record<number, Document[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] }
+    orphanedDocs.forEach((doc: any) => {
+      const tier = doc.authority_tier ?? 5
+      if (orphanedByTier[tier]) orphanedByTier[tier].push(doc)
+      else orphanedByTier[5].push(doc)
+    })
+
     return (
       <div className="min-h-screen fade-up" style={{ background: 'var(--background)' }}>
         <AppNav
@@ -94,7 +115,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         />
 
         <main className="max-w-5xl mx-auto px-6 py-10">
-          {/* Project header */}
           <div className="dark-card p-6 mb-6" style={{ borderRadius: 16 }}>
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex items-start gap-4">
@@ -120,96 +140,101 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
                     View Manuscript
                   </Link>
                 )}
-                <DocumentUpload projectId={project.id} />
               </div>
             </div>
           </div>
 
-          {/* Document table */}
-          <div className="dark-card overflow-hidden" style={{ borderRadius: 14 }}>
-            <div className="px-5 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-space-grotesk)' }}>
-                Documents <span className="font-normal ml-1" style={{ color: 'var(--text-muted)' }}>({documents?.length ?? 0})</span>
-              </h3>
+          {/* Sub-project list */}
+          {subProjects.length > 0 && (
+            <div className="space-y-3 mb-6">
+              {subProjects.map((sp: any) => {
+                const style = SUB_STATUS_STYLES[sp.status] ?? SUB_STATUS_STYLES.active
+                return (
+                  <Link key={sp.id} href={`/projects/${slug}/${sp.slug}`} className="dark-card block p-5 transition-all hover:border-[var(--accent)]" style={{ borderRadius: 12, textDecoration: 'none' }}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 600, fontSize: 16, color: 'var(--text-primary)' }}>{sp.name}</h3>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: style.bg, color: style.color }}>{style.label}</span>
+                        </div>
+                        {sp.description && <p className="text-sm truncate" style={{ color: 'var(--text-muted)' }}>{sp.description}</p>}
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', lineHeight: 1 }}>{sp.doc_count}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sp.doc_count === 1 ? 'document' : 'documents'}</p>
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
             </div>
+          )}
 
-            {(!documents || documents.length === 0) ? (
-              <div className="text-center py-12">
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No documents uploaded yet.</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Document', 'Uploaded by', 'Date', 'PARCA Score'].map(h => (
-                      <th key={h} className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(documents ?? []).map((doc: Document) => (
-                    <tr key={doc.id} className="transition-colors" style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td className="px-5 py-3">
-                        <Link
-                          href={`/projects/${slug}/documents/${doc.id}`}
-                          className="font-medium transition-colors hover:underline"
-                          style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-space-grotesk)' }}
-                        >
-                          {doc.title ?? doc.file_name}
-                        </Link>
-                        {!doc.ai_processed && (
-                          <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>Processing</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {uploaderEmails[doc.uploaded_by] ?? '—'}
-                      </td>
-                      <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {doc.document_date
-                          ? new Date(doc.document_date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
-                          : new Date(doc.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </td>
-                      <td className="px-5 py-3">
-                        {(doc as any).craap_total != null ? (
-                          <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, color: parcaColor((doc as any).craap_total) }}>
-                            {(doc as any).craap_total}
-                            <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)' }}>/50</span>
-                          </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>—</span>
-                        )}
-                      </td>
+          {/* Orphaned documents (pre-migration or unassigned) */}
+          {orphanedDocs.length > 0 && (
+            <div>
+              {subProjects.length > 0 && (
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Unassigned Documents</p>
+              )}
+              <div className="dark-card overflow-hidden" style={{ borderRadius: 14 }}>
+                <div className="px-5 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-space-grotesk)' }}>
+                    Documents <span className="font-normal ml-1" style={{ color: 'var(--text-muted)' }}>({orphanedDocs.length})</span>
+                  </h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Document', 'Date', 'PARCA Score'].map(h => (
+                        <th key={h} className="text-left px-5 py-2.5 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{h}</th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  </thead>
+                  <tbody>
+                    {orphanedDocs.map((doc: any) => (
+                      <tr key={doc.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td className="px-5 py-3">
+                          <Link href={`/projects/${slug}/documents/${doc.id}`} className="font-medium hover:underline" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-space-grotesk)' }}>
+                            {doc.title ?? doc.file_name}
+                          </Link>
+                        </td>
+                        <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {doc.document_date
+                            ? new Date(doc.document_date).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })
+                            : new Date(doc.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </td>
+                        <td className="px-5 py-3">
+                          {(doc as any).craap_total != null ? (
+                            <span style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, color: parcaColor((doc as any).craap_total) }}>
+                              {(doc as any).craap_total}<span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-muted)' }}>/50</span>
+                            </span>
+                          ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {totalDocs === 0 && (
+            <div className="text-center py-16 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>No documents uploaded yet.</p>
+            </div>
+          )}
         </main>
       </div>
     )
   }
 
   // ── STAFF VIEW ───────────────────────────────────────────────────────────
-  const byTier: Record<number, Document[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] }
-  documents?.forEach((doc: Document) => {
+  const orphanedByTier: Record<number, Document[]> = { 1: [], 2: [], 3: [], 4: [], 5: [] }
+  orphanedDocs.forEach((doc: any) => {
     const tier = doc.authority_tier ?? 5
-    if (byTier[tier]) byTier[tier].push(doc)
-    else byTier[5].push(doc)
+    if (orphanedByTier[tier]) orphanedByTier[tier].push(doc)
+    else orphanedByTier[5].push(doc)
   })
-
-  const flags = documents?.flatMap((d: Document) => d.flags ?? []) ?? []
-  const hasRisks = flags.includes('high-priority') || documents?.some((d: Document) => d.sentiment === 'risk')
-  const unreviewed = documents?.filter((d: Document) => d.ai_processed && !d.human_reviewed).length ?? 0
-
-  const avgParca = (() => {
-    const scored = (documents ?? []).filter((d: Document) => (d as any).craap_total != null)
-    if (!scored.length) return null
-    return Math.round(scored.reduce((s: number, d: Document) => s + (d as any).craap_total, 0) / scored.length)
-  })()
-
-  const color = projectColor(project.id)
-  const initials = projectInitials(project.name)
 
   return (
     <div className="min-h-screen fade-up" style={{ background: 'var(--background)' }}>
@@ -225,112 +250,109 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         {/* Project header card */}
         <div className="dark-card p-6 mb-6" style={{ borderRadius: 16 }}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
-            {/* Left: logo mark + meta */}
             <div className="flex items-start gap-4">
               <div style={{ flexShrink: 0 }}>
-                {project.image_url ? (
-                  <ProjectImageUpload projectId={project.id} currentImageUrl={project.image_url} />
-                ) : (
-                  <div className="relative">
-                    <ProjectImageUpload projectId={project.id} currentImageUrl={null} />
-                  </div>
-                )}
+                <ProjectImageUpload projectId={project.id} currentImageUrl={project.image_url} />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontSize: 10 }}>
-                    {project.project_type}
-                  </span>
+                  <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)', fontSize: 10 }}>{project.project_type}</span>
                   <ProjectStatusControl projectId={project.id} currentStatus={project.status ?? 'intake'} isSuperAdmin={isSuperAdmin} />
                 </div>
-                <ProjectNameEditor
-                  projectId={project.id}
-                  name={project.name}
-                  clientName={project.client_name}
-                  projectType={project.project_type ?? null}
-                  isSuperAdmin={isSuperAdmin}
-                />
-                {hasRisks && (
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <span className="risk-dot" style={{ width: 6, height: 6 }} />
-                    <span className="text-xs font-medium" style={{ color: 'var(--risk)' }}>
-                      Risk flags detected
-                    </span>
-                  </div>
-                )}
+                <ProjectNameEditor projectId={project.id} name={project.name} clientName={project.client_name} projectType={project.project_type ?? null} isSuperAdmin={isSuperAdmin} />
                 {project.description && <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>{project.description}</p>}
               </div>
             </div>
 
-            {/* Right: action buttons */}
             <div className="flex gap-2 flex-wrap items-start">
               {isSuperAdmin && (
                 <>
-                  <SearchModal projectId={project.id} projectSlug={slug} suppressedWords={project.search_suppressed_words ?? []} />
-                  <CRAAPWeights projectId={project.id} initialWeights={project.craap_weights ?? { currency: 1, relevance: 1, authority: 1, completeness: 1, purpose: 1 }} />
                   <Link href={`/projects/${slug}/manuscript`} className="dark-btn-outline px-4 py-2 text-sm font-medium rounded-lg transition-all" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Manuscript</Link>
                   <DeleteProjectButton projectId={project.id} projectName={project.name} />
                 </>
               )}
-              <DocumentUpload projectId={project.id} />
+              {isStaff && (
+                <NewSubProjectButton projectId={project.id} projectSlug={slug} />
+              )}
             </div>
           </div>
 
           {/* Stats row */}
           <div className="flex gap-8 mt-5 pt-5" style={{ borderTop: '1px solid var(--border)' }}>
             <div>
-              <p style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 24, color: 'var(--text-primary)', lineHeight: 1 }}>
-                {documents?.length ?? 0}
-              </p>
+              <p style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 24, color: 'var(--text-primary)', lineHeight: 1 }}>{subProjects.length}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Sub-projects</p>
+            </div>
+            <div>
+              <p style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 24, color: 'var(--text-primary)', lineHeight: 1 }}>{totalDocs}</p>
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Documents</p>
             </div>
-            {avgParca != null && (
-              <div>
-                <p style={{ fontFamily: 'var(--font-space-mono)', fontWeight: 700, fontSize: 24, color: parcaColor(avgParca), lineHeight: 1 }}>
-                  {avgParca}<span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 400 }}>/50</span>
-                </p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Avg PARCA</p>
-              </div>
-            )}
-            {unreviewed > 0 && (
-              <div>
-                <p style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 24, color: 'var(--warning)', lineHeight: 1 }}>{unreviewed}</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Awaiting Review</p>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Document list grouped by tier */}
-        {[1, 2, 3, 4, 5].map(tier => {
-          const tierDocs = byTier[tier]
-          if (tierDocs.length === 0) return null
-          const { bg, color } = TIER_STYLES[tier]
-          return (
-            <div key={tier} className="mb-8">
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-xs font-semibold px-2.5 py-1 rounded" style={{ background: bg, color, letterSpacing: '0.03em' }}>{TIER_LABELS[tier]}</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{tierDocs.length} document{tierDocs.length !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
-                {tierDocs.map((doc: Document, i: number) => (
-                  <DocumentCard
-                    key={doc.id}
-                    document={doc}
-                    projectSlug={slug}
-                    uploaderEmail={uploaderEmails[doc.uploaded_by]}
-                    isLast={i === tierDocs.length - 1}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })}
+        {/* Sub-project cards */}
+        {subProjects.length > 0 && (
+          <div className="space-y-3 mb-8">
+            {subProjects.map((sp: any) => {
+              const style = SUB_STATUS_STYLES[sp.status] ?? SUB_STATUS_STYLES.active
+              return (
+                <Link key={sp.id} href={`/projects/${slug}/${sp.slug}`} className="dark-card block p-5 transition-all hover:border-[var(--accent)]" style={{ borderRadius: 12, textDecoration: 'none' }}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 600, fontSize: 16, color: 'var(--text-primary)' }}>{sp.name}</h3>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: style.bg, color: style.color }}>{style.label}</span>
+                      </div>
+                      {sp.description && <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{sp.description}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p style={{ fontFamily: 'var(--font-space-grotesk)', fontWeight: 700, fontSize: 24, color: 'var(--text-primary)', lineHeight: 1 }}>{sp.doc_count}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{sp.doc_count === 1 ? 'document' : 'documents'}</p>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
 
-        {(!documents || documents.length === 0) && (
+        {/* Orphaned documents (pre-migration or unassigned) shown inline */}
+        {orphanedDocs.length > 0 && (
+          <div>
+            {subProjects.length > 0 && (
+              <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>Unassigned Documents</p>
+            )}
+            {[1, 2, 3, 4, 5].map(tier => {
+              const tierDocs = orphanedByTier[tier]
+              if (tierDocs.length === 0) return null
+              const { bg, color } = TIER_STYLES[tier]
+              return (
+                <div key={tier} className="mb-8">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded" style={{ background: bg, color, letterSpacing: '0.03em' }}>{TIER_LABELS[tier]}</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{tierDocs.length} document{tierDocs.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--surface)' }}>
+                    {tierDocs.map((doc: Document, i: number) => (
+                      <DocumentCard
+                        key={doc.id}
+                        document={doc}
+                        projectSlug={slug}
+                        uploaderEmail={uploaderEmails[doc.uploaded_by]}
+                        isLast={i === tierDocs.length - 1}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {totalDocs === 0 && subProjects.length === 0 && (
           <div className="text-center py-16 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>No documents uploaded yet.</p>
-            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Upload documents to begin the AI assessment.</p>
+            <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>No sub-projects yet.</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Create a sub-project to start uploading documents.</p>
           </div>
         )}
       </main>
