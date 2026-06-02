@@ -45,7 +45,9 @@ export default function CompanyDetailClient({ company, members: initialMembers, 
   const [nameInput, setNameInput] = useState(company.name)
   const [savingName, setSavingName] = useState(false)
   const [showInvite, setShowInvite] = useState(false)
+  const [inviteTab, setInviteTab] = useState<'new' | 'existing'>('existing')
   const [inviteForm, setInviteForm] = useState({ email: '', password: '', first_name: '', last_name: '' })
+  const [existingEmail, setExistingEmail] = useState('')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const router = useRouter()
@@ -92,6 +94,29 @@ export default function CompanyDetailClient({ company, members: initialMembers, 
     } else {
       const data = await res.json()
       setInviteError(data.error ?? 'Failed to create admin')
+    }
+    setInviting(false)
+  }
+
+  async function handleAddExisting(e: React.FormEvent) {
+    e.preventDefault()
+    setInviting(true)
+    setInviteError('')
+
+    const res = await fetch(`/api/companies/${company.id}/members`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: existingEmail }),
+    })
+
+    if (res.ok) {
+      const { user } = await res.json()
+      setMembers(prev => [...prev, user])
+      setShowInvite(false)
+      setExistingEmail('')
+    } else {
+      const data = await res.json()
+      setInviteError(data.error ?? 'Failed to add user')
     }
     setInviting(false)
   }
@@ -215,62 +240,117 @@ export default function CompanyDetailClient({ company, members: initialMembers, 
       {showInvite && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
           <div className="dark-modal rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>
-              Add Company Admin
-            </h3>
-            <form onSubmit={handleInviteAdmin} className="space-y-4">
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>First Name</label>
-                  <input type="text" value={inviteForm.first_name}
-                    onChange={e => setInviteForm({ ...inviteForm, first_name: e.target.value })}
+            <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Add Company Admin</h3>
+
+            {/* Tabs */}
+            <div className="flex gap-1 mb-5 rounded-lg p-1" style={{ background: 'var(--surface-raised)' }}>
+              {(['existing', 'new'] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => { setInviteTab(t); setInviteError('') }}
+                  className="flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
+                  style={{
+                    background: inviteTab === t ? 'var(--surface)' : 'transparent',
+                    color: inviteTab === t ? 'var(--text-primary)' : 'var(--text-muted)',
+                  }}
+                >
+                  {t === 'existing' ? 'Existing User' : 'New User'}
+                </button>
+              ))}
+            </div>
+
+            {inviteTab === 'existing' ? (
+              <form onSubmit={handleAddExisting} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Email address <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    value={existingEmail}
+                    onChange={e => setExistingEmail(e.target.value)}
+                    placeholder="mike@example.com"
+                    className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none"
+                  />
+                  <p className="text-xs mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                    Must match an existing account in the system.
+                  </p>
+                </div>
+
+                {inviteError && (
+                  <p className="text-sm px-3 py-2 rounded-lg" style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}>
+                    {inviteError}
+                  </p>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button type="button"
+                    onClick={() => { setShowInvite(false); setInviteError(''); setExistingEmail('') }}
+                    className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={inviting}
+                    className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50">
+                    {inviting ? 'Adding...' : 'Add Admin'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleInviteAdmin} className="space-y-4">
+                <div className="flex gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>First Name</label>
+                    <input type="text" value={inviteForm.first_name}
+                      onChange={e => setInviteForm({ ...inviteForm, first_name: e.target.value })}
+                      className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Last Name</label>
+                    <input type="text" value={inviteForm.last_name}
+                      onChange={e => setInviteForm({ ...inviteForm, last_name: e.target.value })}
+                      className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Email <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <input required type="email" value={inviteForm.email}
+                    onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
                     className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
                 </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Last Name</label>
-                  <input type="text" value={inviteForm.last_name}
-                    onChange={e => setInviteForm({ ...inviteForm, last_name: e.target.value })}
+
+                <div>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+                    Temporary Password <span style={{ color: '#f87171' }}>*</span>
+                  </label>
+                  <input required type="text" value={inviteForm.password}
+                    onChange={e => setInviteForm({ ...inviteForm, password: e.target.value })}
+                    placeholder="Share this with the user"
                     className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  Email <span style={{ color: '#f87171' }}>*</span>
-                </label>
-                <input required type="email" value={inviteForm.email}
-                  onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })}
-                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
-              </div>
+                {inviteError && (
+                  <p className="text-sm px-3 py-2 rounded-lg" style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}>
+                    {inviteError}
+                  </p>
+                )}
 
-              <div>
-                <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                  Temporary Password <span style={{ color: '#f87171' }}>*</span>
-                </label>
-                <input required type="text" value={inviteForm.password}
-                  onChange={e => setInviteForm({ ...inviteForm, password: e.target.value })}
-                  placeholder="Share this with the user"
-                  className="dark-input w-full px-3 py-2 rounded-lg text-sm outline-none" />
-              </div>
-
-              {inviteError && (
-                <p className="text-sm px-3 py-2 rounded-lg" style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}>
-                  {inviteError}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button type="button"
-                  onClick={() => { setShowInvite(false); setInviteError('') }}
-                  className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg">
-                  Cancel
-                </button>
-                <button type="submit" disabled={inviting}
-                  className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50">
-                  {inviting ? 'Creating...' : 'Create Admin'}
-                </button>
-              </div>
-            </form>
+                <div className="flex gap-3 pt-2">
+                  <button type="button"
+                    onClick={() => { setShowInvite(false); setInviteError('') }}
+                    className="dark-btn-outline flex-1 py-2 text-sm font-medium rounded-lg">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={inviting}
+                    className="dark-btn-primary flex-1 py-2 text-sm font-medium rounded-lg disabled:opacity-50">
+                    {inviting ? 'Creating...' : 'Create Admin'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

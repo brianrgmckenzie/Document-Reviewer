@@ -70,6 +70,54 @@ export async function POST(
   return NextResponse.json({ user: { id: user.id, email: user.email } })
 }
 
+// PATCH — assign an existing user as company_admin for this company
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!await requireSuperAdmin()) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { id: companyId } = await params
+  const { email } = await request.json()
+  if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+
+  const admin = createAdminClient()
+
+  const { data: company } = await admin.from('companies').select('id').eq('id', companyId).single()
+  if (!company) return NextResponse.json({ error: 'Company not found' }, { status: 404 })
+
+  // Find the existing auth user by email
+  const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  const existing = users.find((u: any) => u.email?.toLowerCase() === email.trim().toLowerCase())
+  if (!existing) return NextResponse.json({ error: 'No user found with that email' }, { status: 404 })
+
+  // Check not already a member
+  const { data: alreadyMember } = await admin
+    .from('company_members')
+    .select('id')
+    .eq('company_id', companyId)
+    .eq('user_id', existing.id)
+    .single()
+  if (alreadyMember) return NextResponse.json({ error: 'User is already an admin of this company' }, { status: 409 })
+
+  await admin.from('company_members').insert({ company_id: companyId, user_id: existing.id, role: 'admin' })
+  await admin.from('user_roles').upsert({ user_id: existing.id, role: 'company_admin' }, { onConflict: 'user_id' })
+
+  const { data: profile } = await admin.from('user_profiles').select('first_name, last_name').eq('user_id', existing.id).single()
+
+  return NextResponse.json({
+    user: {
+      user_id: existing.id,
+      role: 'admin',
+      email: existing.email,
+      first_name: profile?.first_name ?? null,
+      last_name: profile?.last_name ?? null,
+    }
+  })
+}
+
 // DELETE — remove a company admin (removes from company_members; keeps auth user)
 export async function DELETE(
   request: NextRequest,
