@@ -52,7 +52,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const isClient = role === 'client'
   const isStaff = !isClient
 
-  const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
+  const { data: project } = await admin.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
 
   if (isSuperAdmin && !isImpersonating) {
@@ -75,7 +75,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   }))
 
   // Always fetch all documents — fallback for pre-migration projects
-  const { data: allDocuments } = await supabase
+  const { data: allDocuments } = await admin
     .from('documents')
     .select('*')
     .eq('project_id', project.id)

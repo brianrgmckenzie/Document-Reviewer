@@ -50,7 +50,7 @@ export default async function SubProjectPage({ params }: { params: Promise<{ slu
   const isClient = role === 'client'
   const isStaff = !isClient
 
-  const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
+  const { data: project } = await admin.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
 
   if (isSuperAdmin && !isImpersonating) {
@@ -68,7 +68,7 @@ export default async function SubProjectPage({ params }: { params: Promise<{ slu
     .single()
   if (!subProject) notFound()
 
-  const { data: documents } = await supabase
+  const { data: documents } = await admin
     .from('documents')
     .select('*')
     .eq('project_id', project.id)
