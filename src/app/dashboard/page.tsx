@@ -43,7 +43,7 @@ export default async function DashboardPage() {
   let userCompanies: { id: string; name: string; slug: string }[] = []
 
   if (isSuperAdmin && !isImpersonating) {
-    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
+    const { data } = await admin.from('projects').select('*').order('created_at', { ascending: false })
     projects = data ?? []
   } else if (isCompanyAdmin && !isImpersonating) {
     const { data: companyMemberships } = await admin
