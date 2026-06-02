@@ -9,11 +9,18 @@ interface Project {
   slug: string
 }
 
+interface Company {
+  id: string
+  name: string
+  slug: string
+}
+
 interface UserWithRole {
   id: string
   email: string | undefined
   role: string | null
   projects: Project[]
+  companies: Company[]
   created_at: string
   first_name: string | null
   last_name: string | null
@@ -22,6 +29,7 @@ interface UserWithRole {
 
 interface Props {
   projects: Project[]
+  companies: Company[]
   currentUserId: string
 }
 
@@ -30,7 +38,7 @@ function displayName(user: UserWithRole) {
   return full || null
 }
 
-export default function AdminUsersClient({ projects, currentUserId }: Props) {
+export default function AdminUsersClient({ projects, companies, currentUserId }: Props) {
   const [users, setUsers] = useState<UserWithRole[]>([])
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
@@ -163,6 +171,24 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
     await loadUsers()
   }
 
+  async function handleAssignCompany(userId: string, companyId: string) {
+    await fetch(`/api/admin/users/${userId}/companies`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId }),
+    })
+    await loadUsers()
+  }
+
+  async function handleRemoveCompany(userId: string, companyId: string) {
+    await fetch(`/api/admin/users/${userId}/companies`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId }),
+    })
+    await loadUsers()
+  }
+
   async function handleViewAs(userId: string) {
     setImpersonating(userId)
     await fetch('/api/impersonate', {
@@ -195,6 +221,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
   }
 
   const showProjectAssignment = (role: string | null) => role === 'client'
+  const showCompanyAssignment = (role: string | null) => role === 'company_admin'
   const inviteRoleNeedsProjects = inviteForm.role === 'client'
   const inviteUnassigned = projects.filter(p => !inviteProjects.includes(p.id))
 
@@ -219,6 +246,7 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
       <div className="space-y-3">
         {users.map(user => {
           const unassigned = projects.filter(p => !user.projects.some(up => up.id === p.id))
+          const unassignedCompanies = companies.filter(c => !(user.companies ?? []).some(uc => uc.id === c.id))
           const isMe = user.id === currentUserId
           const name = displayName(user)
           const isEditingProfile = editingProfile === user.id
@@ -322,6 +350,32 @@ export default function AdminUsersClient({ projects, currentUserId }: Props) {
                       )}
                       {user.projects.length === 0 && (
                         <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>No projects assigned</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Company assignment for company_admin */}
+                  {showCompanyAssignment(user.role) && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {(user.companies ?? []).map(c => (
+                        <span key={c.id} className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
+                          style={{ background: 'var(--purple-dim)', color: 'var(--purple)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                          {c.name}
+                          <button onClick={() => handleRemoveCompany(user.id, c.id)} className="ml-0.5 leading-none">✕</button>
+                        </span>
+                      ))}
+                      {unassignedCompanies.length > 0 && (
+                        <select
+                          onChange={e => { if (e.target.value) handleAssignCompany(user.id, e.target.value); e.target.value = '' }}
+                          className="dark-select text-xs px-2 py-0.5 rounded-full"
+                          style={{ borderStyle: 'dashed' }}
+                        >
+                          <option value="">+ Add company</option>
+                          {unassignedCompanies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      )}
+                      {(user.companies ?? []).length === 0 && (
+                        <span className="text-xs italic" style={{ color: 'var(--text-muted)' }}>No company assigned</span>
                       )}
                     </div>
                   )}

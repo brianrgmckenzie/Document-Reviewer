@@ -27,6 +27,9 @@ export async function GET() {
   const { data: memberships } = await admin
     .from('project_members')
     .select('user_id, project_id, projects(id, name, slug)')
+  const { data: companyMemberships } = await admin
+    .from('company_members')
+    .select('user_id, company_id, companies(id, name, slug)')
   const { data: profiles } = await admin
     .from('user_profiles')
     .select('user_id, first_name, last_name, organization')
@@ -40,12 +43,19 @@ export async function GET() {
     if (m.projects) membershipMap[m.user_id].push(m.projects as unknown as { id: string; name: string; slug: string })
   }
 
+  const companyMap: Record<string, { id: string; name: string; slug: string }[]> = {}
+  for (const m of companyMemberships ?? []) {
+    if (!companyMap[m.user_id]) companyMap[m.user_id] = []
+    if (m.companies) companyMap[m.user_id].push(m.companies as unknown as { id: string; name: string; slug: string })
+  }
+
   const result = users.map(u => ({
     id: u.id,
     email: u.email,
     created_at: u.created_at,
     role: roleMap[u.id] ?? null,
     projects: membershipMap[u.id] ?? [],
+    companies: companyMap[u.id] ?? [],
     first_name: profileMap[u.id]?.first_name ?? null,
     last_name: profileMap[u.id]?.last_name ?? null,
     organization: profileMap[u.id]?.organization ?? null,

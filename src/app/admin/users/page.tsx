@@ -23,6 +23,11 @@ export default async function AdminUsersPage() {
     .select('id, name, slug')
     .order('name')
 
+  const { data: companies } = await admin
+    .from('companies')
+    .select('id, name, slug')
+    .order('name')
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
       <AppNav
@@ -31,7 +36,7 @@ export default async function AdminUsersPage() {
         breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Users' }]}
       />
       <main className="max-w-6xl mx-auto px-6 py-10">
-        <AdminUsersClient projects={projects ?? []} currentUserId={user.id} />
+        <AdminUsersClient projects={projects ?? []} companies={companies ?? []} currentUserId={user.id} />
       </main>
     </div>
   )
