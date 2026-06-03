@@ -67,10 +67,10 @@ export default async function DocumentPage({ params }: { params: Promise<{ slug:
   const isSuperAdmin = role === 'super_admin'
   const isClient = role === 'client'
 
-  const { data: document } = await supabase.from('documents').select('*').eq('id', id).single()
+  const { data: document } = await admin.from('documents').select('*').eq('id', id).single()
   if (!document) notFound()
 
-  const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
+  const { data: project } = await admin.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
 
   if (isSuperAdmin && !isImpersonating) {

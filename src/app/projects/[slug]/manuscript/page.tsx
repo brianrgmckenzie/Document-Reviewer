@@ -18,7 +18,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
   const isSuperAdmin = role === 'super_admin'
   const isClient = role === 'client'
 
-  const { data: project } = await supabase.from('projects').select('*').eq('slug', slug).single()
+  const { data: project } = await admin.from('projects').select('*').eq('slug', slug).single()
   if (!project) notFound()
 
   // Clients can only view if project is complete
@@ -31,7 +31,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
     if (!membership) notFound()
   }
 
-  const { data: documents } = await supabase.from('documents').select('id').eq('project_id', project.id).eq('ai_processed', true)
+  const { data: documents } = await admin.from('documents').select('id').eq('project_id', project.id).eq('ai_processed', true)
   const processedCount = documents?.length ?? 0
 
   return (
