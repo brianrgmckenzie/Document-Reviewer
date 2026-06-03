@@ -34,6 +34,9 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
   const { data: documents } = await admin.from('documents').select('id').eq('project_id', project.id).eq('ai_processed', true)
   const processedCount = documents?.length ?? 0
 
+  const { data: subProjects } = await admin.from('sub_projects').select('id').eq('project_id', project.id)
+  const subProjectCount = subProjects?.length ?? 0
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--background)' }}>
       <AppNav
@@ -49,6 +52,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
         <ManuscriptClient
           project={project}
           processedCount={processedCount}
+          subProjectCount={subProjectCount}
           initialManuscript={project.manuscript ?? null}
           manuscriptGeneratedAt={project.manuscript_generated_at ?? null}
           readOnly={isClient}

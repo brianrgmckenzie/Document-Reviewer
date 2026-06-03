@@ -9,6 +9,7 @@ import { Copy, FileDown, Share2, Code, RefreshCw, Play, Square, Link, Headphones
 interface Props {
   project: { id: string; name: string; client_name: string }
   processedCount: number
+  subProjectCount?: number
   initialManuscript: string | null
   manuscriptGeneratedAt: string | null
   readOnly?: boolean
@@ -21,6 +22,7 @@ interface Props {
 export default function ManuscriptClient({
   project,
   processedCount,
+  subProjectCount,
   initialManuscript,
   manuscriptGeneratedAt,
   readOnly,
@@ -214,7 +216,7 @@ export default function ManuscriptClient({
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {readOnly
               ? 'Document review summary prepared for your project'
-              : `Synthesizes ${processedCount} processed document${processedCount !== 1 ? 's' : ''} into a consultant briefing`}
+              : `Synthesizes ${processedCount} document${processedCount !== 1 ? 's' : ''}${subProjectCount ? ` across ${subProjectCount} analysis phase${subProjectCount !== 1 ? 's' : ''}` : ''} into a consultant briefing`}
             {generatedAt && (
               <span style={{ color: 'var(--text-muted)' }}> · Last generated {new Date(generatedAt).toLocaleString()}</span>
             )}

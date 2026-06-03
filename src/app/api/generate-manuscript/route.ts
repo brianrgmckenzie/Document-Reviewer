@@ -59,6 +59,12 @@ export async function POST(request: NextRequest) {
     .eq('id', projectId)
     .single()
 
+  const { data: subProjects } = await admin
+    .from('sub_projects')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true })
+
   const { data: documents } = await admin
     .from('documents')
     .select('*')
@@ -77,13 +83,12 @@ export async function POST(request: NextRequest) {
   // Compute max possible weighted score
   const maxWeighted = PARCA_KEYS.reduce((sum, key) => sum + 10 * (weights[key] ?? 1), 0)
 
-  // Score and sort documents — highest CRAAP first
+  // Score all documents
   const scored = documents
     .map(doc => ({
       ...doc,
       _weightedScore: computeWeightedPARCA(doc, weights),
     }))
-    .sort((a, b) => b._weightedScore - a._weightedScore)
 
   // Update weighted totals in DB so document cards reflect current weights
   await Promise.all(
@@ -95,14 +100,11 @@ export async function POST(request: NextRequest) {
     )
   )
 
-  // Build document summaries — ranked by weighted CRAAP
-  const docSummaries = scored.map((doc, i) => {
-    const rawTotal = doc.craap_total ?? (PARCA_KEYS.reduce((s, k) => s + (doc[`craap_${k}`] ?? 5), 0))
+  function buildDocSummary(doc: any): string {
+    const rawTotal = doc.craap_total ?? (PARCA_KEYS.reduce((s: number, k: string) => s + (doc[`craap_${k}`] ?? 5), 0))
     const weightedScore = doc._weightedScore
     const influence = parcaLabel(weightedScore, maxWeighted)
-
-    return `
-FILE: ${doc.file_name} [PARCA: ${rawTotal}/50 | Weighted: ${weightedScore.toFixed(1)}/${maxWeighted.toFixed(0)} | Influence: ${influence}]
+    return `FILE: ${doc.file_name} [PARCA: ${rawTotal}/50 | Weighted: ${weightedScore.toFixed(1)}/${maxWeighted.toFixed(0)} | Influence: ${influence}]
 Title: ${doc.title ?? doc.file_name}
 Date: ${doc.document_date ?? 'Unknown'} | Category: ${doc.category ?? 'Unknown'} | Tier: ${doc.authority_tier_label ?? 'Unknown'}
 PARCA Breakdown - Purpose: ${doc.craap_purpose ?? '?'} | Authority: ${doc.craap_authority ?? '?'} | Relevance: ${doc.craap_relevance ?? '?'} | Completeness: ${doc.craap_completeness ?? '?'} | Accuracy: ${doc.craap_currency ?? '?'}
@@ -115,7 +117,61 @@ ${(doc.key_extracts ?? []).slice(0, 5).map(formatExtract).join('\n') || 'None'}
 Key Numbers: ${[...(doc.key_numbers?.amounts ?? []), ...(doc.key_numbers?.units ?? [])].join(' | ') || 'None'}
 Flags: ${(doc.flags ?? []).join(', ') || 'None'}
 ---`
-  }).join('\n')
+  }
+
+  // Group documents by sub-project, sorted by PARCA within each group
+  const subProjectList = subProjects ?? []
+  const docsBySubProject: Record<string, typeof scored> = {}
+  const unassigned: typeof scored = []
+
+  for (const doc of scored) {
+    if (doc.sub_project_id) {
+      if (!docsBySubProject[doc.sub_project_id]) docsBySubProject[doc.sub_project_id] = []
+      docsBySubProject[doc.sub_project_id].push(doc)
+    } else {
+      unassigned.push(doc)
+    }
+  }
+
+  // Sort within each group by weighted score descending
+  for (const key of Object.keys(docsBySubProject)) {
+    docsBySubProject[key].sort((a, b) => b._weightedScore - a._weightedScore)
+  }
+  unassigned.sort((a, b) => b._weightedScore - a._weightedScore)
+
+  // Build sub-project structure block
+  const hasSubProjects = subProjectList.length > 0
+  const subProjectIndex = hasSubProjects
+    ? subProjectList.map((sp: any, i: number) => {
+        const count = docsBySubProject[sp.id]?.length ?? 0
+        return `${i + 1}. ${sp.name} [${sp.status}] — ${count} document${count !== 1 ? 's' : ''}${sp.description ? `: ${sp.description}` : ''}`
+      }).join('\n')
+    : ''
+
+  // Build grouped document summaries
+  let docSummaries = ''
+  if (hasSubProjects) {
+    for (const sp of subProjectList as any[]) {
+      const spDocs = docsBySubProject[sp.id] ?? []
+      docSummaries += `\n=== ANALYSIS PHASE: ${sp.name.toUpperCase()} ===\n`
+      if (sp.description) docSummaries += `Context: ${sp.description}\n`
+      docSummaries += `Documents (${spDocs.length}), ranked by PARCA:\n\n`
+      docSummaries += spDocs.length > 0
+        ? spDocs.map(buildDocSummary).join('\n')
+        : 'No processed documents in this phase.\n'
+      docSummaries += '\n'
+    }
+    if (unassigned.length > 0) {
+      docSummaries += `\n=== UNASSIGNED DOCUMENTS ===\n`
+      docSummaries += unassigned.map(buildDocSummary).join('\n')
+    }
+  } else {
+    // No sub-projects — flat list sorted by PARCA
+    docSummaries = scored
+      .sort((a, b) => b._weightedScore - a._weightedScore)
+      .map(buildDocSummary)
+      .join('\n')
+  }
 
   const prompt = `You are a senior impact consultant at Reframe Concepts completing a comprehensive intake review for a new client engagement.
 
@@ -127,9 +183,15 @@ ${project.description ? `DESCRIPTION: ${project.description}` : ''}
 PARCA WEIGHTING APPLIED TO THIS ENGAGEMENT:
 Purpose ×${weights.purpose} | Authority ×${weights.authority} | Relevance ×${weights.relevance} | Completeness ×${weights.completeness} | Accuracy ×${weights.currency}
 Maximum possible weighted score: ${maxWeighted.toFixed(0)} pts
+${hasSubProjects ? `
+ENGAGEMENT ANALYSIS STRUCTURE:
+This engagement is organized into ${subProjectList.length} analysis phase${subProjectList.length !== 1 ? 's' : ''}:
+${subProjectIndex}
 
+Each phase represents a distinct focus area or time period in the engagement. Documents are grouped below by phase. When tracing organizational trajectory, use these named phases as your structural spine.
+` : ''}
 CRITICAL INSTRUCTION ON WEIGHTING:
-The documents below are ranked from highest to lowest weighted PARCA score. Documents with higher PARCA scores have been assessed as more purposeful, authoritative, relevant, complete, and accurate — they should carry more weight in your synthesis. When two documents contain conflicting information, favour the one with the higher PARCA score. When building the narrative, draw more heavily on high-influence documents and treat low-influence documents as supporting context only.
+Within each phase, documents are ranked from highest to lowest weighted PARCA score. Documents with higher PARCA scores should carry more weight in your synthesis. When two documents contain conflicting information, favour the one with the higher PARCA score.
 
 ${docSummaries}
 
@@ -145,7 +207,7 @@ Structure the manuscript exactly as follows:
 A full paragraph (5-8 sentences). Where is this organization today? What is the headline story the documents collectively tell? What is the single most important thing the engagement team needs to understand before their first client meeting? Ground this in your highest-CRAAP documents.
 
 ## Organizational Trajectory
-Trace the arc from earliest to most recent documents in detail. What has changed, what has not, and what does the direction of travel predict? Look for patterns across documents, not just summaries of individual ones. What are the inflection points?
+Trace the arc from earliest to most recent documents in detail.${hasSubProjects ? ` Use the named analysis phases (${subProjectList.map((sp: any) => sp.name).join(', ')}) as your structural spine -- what was the state of the organization at each phase, what changed between them, and what does the cumulative direction predict?` : ' What has changed, what has not, and what does the direction of travel predict?'} Look for patterns across documents, not just summaries of individual ones. What are the inflection points?
 
 ## Chief Concerns
 A numbered list of the most significant concerns, risks, or red flags. At least 5, up to 10. For each: name the specific issue, cite the source document by filename, and explain why it matters for this engagement. Prioritize concerns from high-CRAAP documents.
@@ -172,7 +234,7 @@ What documents or data are conspicuously absent? What questions remain unanswere
 5-7 specific, prioritized recommendations for where Reframe Concepts should focus first, based on what the documents reveal. Each recommendation should be actionable and tied to evidence from the document review.
 
 ---
-*Generated by Reframe Concepts Document Review Platform. Based on ${documents.length} documents. CRAAP-weighted synthesis.*
+*Generated by Reframe Concepts Document Review Platform. Based on ${documents.length} documents${hasSubProjects ? ` across ${subProjectList.length} analysis phase${subProjectList.length !== 1 ? 's' : ''}` : ''}. CRAAP-weighted synthesis.*
 
 Write in clear, professional prose. Use bullet points only in list sections (Chief Concerns, Gaps, Recommended Focus Areas). Narrative sections should be paragraphs. This should read like a thorough consultant briefing note, not a form.`
 
