@@ -48,6 +48,7 @@ export interface Project {
   image_url: string | null
   manuscript: string | null
   manuscript_generated_at: string | null
+  engagement_context: string | null
   craap_weights: Record<string, number> | null
   search_suppressed_words: string[] | null
 }

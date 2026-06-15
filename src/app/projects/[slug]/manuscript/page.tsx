@@ -60,6 +60,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
           initialShareToken={project.share_token ?? null}
           initialShareEnabled={project.share_enabled ?? false}
           initialAudioUrl={project.audio_url ?? null}
+          initialEngagementContext={project.engagement_context ?? null}
         />
       </main>
     </div>

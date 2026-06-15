@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { exportManuscriptToDocx } from '@/lib/exportDocx'
 import ManuscriptRenderer from '@/components/ManuscriptRenderer'
-import { Copy, FileDown, Share2, Code, RefreshCw, Play, Square, Link, Headphones, Upload, Trash2 } from 'lucide-react'
+import { Copy, FileDown, Share2, Code, RefreshCw, Play, Square, Link, Headphones, Upload, Trash2, FileText, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface Props {
   project: { id: string; name: string; client_name: string }
@@ -17,6 +17,7 @@ interface Props {
   initialShareToken?: string | null
   initialShareEnabled?: boolean
   initialAudioUrl?: string | null
+  initialEngagementContext?: string | null
 }
 
 export default function ManuscriptClient({
@@ -30,6 +31,7 @@ export default function ManuscriptClient({
   initialShareToken,
   initialShareEnabled,
   initialAudioUrl,
+  initialEngagementContext,
 }: Props) {
   const [manuscript, setManuscript] = useState(initialManuscript)
   const [generatedAt, setGeneratedAt] = useState(manuscriptGeneratedAt)
@@ -50,6 +52,11 @@ export default function ManuscriptClient({
   const [audioError, setAudioError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const [engagementContext, setEngagementContext] = useState(initialEngagementContext ?? '')
+  const [contextExpanded, setContextExpanded] = useState(false)
+  const [savingContext, setSavingContext] = useState(false)
+  const [contextSaved, setContextSaved] = useState(false)
+  const [contextError, setContextError] = useState('')
 
   useEffect(() => {
     setOrigin(window.location.origin)
@@ -201,6 +208,25 @@ export default function ManuscriptClient({
     if (response.ok) setAudioUrl(null)
   }
 
+  async function handleSaveContext() {
+    setSavingContext(true)
+    setContextError('')
+    setContextSaved(false)
+    const response = await fetch(`/api/projects/${project.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engagement_context: engagementContext.trim() || null }),
+    })
+    if (response.ok) {
+      setContextSaved(true)
+      setTimeout(() => setContextSaved(false), 2000)
+    } else {
+      const body = await response.json().catch(() => ({}))
+      setContextError(body.error ?? 'Failed to save')
+    }
+    setSavingContext(false)
+  }
+
   function handleCopyShareLink() {
     if (shareToken) navigator.clipboard.writeText(`${origin}/share/${shareToken}`)
   }
@@ -281,6 +307,54 @@ export default function ManuscriptClient({
           )}
         </div>
       </div>
+
+      {/* Engagement context */}
+      {!readOnly && (
+        <div className="dark-card rounded-xl p-5">
+          <button
+            onClick={() => setContextExpanded(e => !e)}
+            className="w-full flex items-center justify-between gap-3 text-left"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText size={15} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+              <span className="text-sm font-medium shrink-0" style={{ color: 'var(--text-primary)' }}>Engagement Context</span>
+              {!contextExpanded && (
+                <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+                  {engagementContext.trim()
+                    ? engagementContext.trim().slice(0, 100)
+                    : 'Not set — paste a contract, SOW, or instructions to shape the manuscript'}
+                </span>
+              )}
+            </div>
+            {contextExpanded ? <ChevronUp size={15} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={15} style={{ color: 'var(--text-muted)' }} />}
+          </button>
+          {contextExpanded && (
+            <div className="mt-3 space-y-2">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Paste a contract addendum, SOW, or any instructions for this engagement. If it defines specific deliverables, the manuscript will be restructured to produce them; otherwise it shapes emphasis within the default structure.
+              </p>
+              <textarea
+                value={engagementContext}
+                onChange={e => setEngagementContext(e.target.value)}
+                placeholder="e.g. paste the contract addendum, SOW, or describe what this engagement needs to produce..."
+                className="dark-textarea w-full px-3 py-2 rounded-lg text-sm"
+                style={{ minHeight: '180px' }}
+              />
+              {contextError && <p className="text-xs" style={{ color: '#f87171' }}>{contextError}</p>}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveContext}
+                  disabled={savingContext}
+                  className="dark-btn-primary px-3 py-1.5 text-sm rounded-lg disabled:opacity-50"
+                >
+                  {savingContext ? 'Saving...' : 'Save'}
+                </button>
+                {contextSaved && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Saved</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* PARCA confirmation modal */}
       {showConfirm && (

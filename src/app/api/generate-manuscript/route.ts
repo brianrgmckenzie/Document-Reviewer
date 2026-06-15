@@ -179,7 +179,12 @@ CLIENT: ${project.client_name}
 PROJECT: ${project.name}
 TYPE: ${project.project_type ?? 'Unknown'}
 ${project.description ? `DESCRIPTION: ${project.description}` : ''}
-
+${project.engagement_context ? `
+ENGAGEMENT CONTEXT (provided by the consultant -- may be a contract, SOW, addendum, or informal notes):
+"""
+${project.engagement_context}
+"""
+` : ''}
 PARCA WEIGHTING APPLIED TO THIS ENGAGEMENT:
 Purpose ×${weights.purpose} | Authority ×${weights.authority} | Relevance ×${weights.relevance} | Completeness ×${weights.completeness} | Accuracy ×${weights.currency}
 Maximum possible weighted score: ${maxWeighted.toFixed(0)} pts
@@ -198,8 +203,12 @@ ${docSummaries}
 Based on this document review, produce a thorough intake manuscript. Write as a senior consultant briefing their team: direct, analytical, and actionable. Do not hedge. Name what you see. Ground every claim in specific documents -- cite by filename (e.g. "per filename.pdf") when making assertions. Never reference documents by number (e.g. "Doc 3"). Do not use em dashes anywhere in your output -- use a hyphen or colon instead.
 
 Each section should be substantive. Thin sections are not acceptable. If the documents provide enough material, go deep.
+${project.engagement_context ? `
+ADAPTING TO ENGAGEMENT CONTEXT:
+The ENGAGEMENT CONTEXT above may define specific deliverables, required sections, or a format this manuscript must satisfy -- for example, a contract addendum's "Deliverables" section. If it does, restructure your output entirely (including the title) to produce exactly those deliverables, using equivalent heading names and structure to what's described, and populate each with findings drawn from the document review below in the same direct, evidence-grounded voice. If the context is general background, priorities, or informal instructions rather than a deliverables list, use it to inform emphasis and focus, and follow the default structure below.
 
-Structure the manuscript exactly as follows:
+DEFAULT STRUCTURE (use this unless the engagement context specifies otherwise):
+` : 'Structure the manuscript exactly as follows:'}
 
 # Intake Manuscript: ${project.client_name}
 

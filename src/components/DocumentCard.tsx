@@ -125,6 +125,13 @@ export default function DocumentCard({
           )}
         </div>
 
+        {/* Filename (when different from title) */}
+        {doc.title && doc.title !== doc.file_name && (
+          <p className="text-xs mb-1 truncate" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-space-mono)' }}>
+            {doc.file_name}
+          </p>
+        )}
+
         {/* Metadata line */}
         {metaParts.length > 0 && (
           <p className="text-xs mb-1" style={{ color: 'var(--text-secondary)' }}>

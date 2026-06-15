@@ -80,7 +80,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
     .select('*')
     .eq('project_id', project.id)
     .order('authority_tier', { ascending: true })
-    .order('document_date', { ascending: false })
+    .order('human_reviewed', { ascending: true })
+    .order('file_name', { ascending: true })
 
   // Documents without a sub_project_id are orphaned (pre-migration or unassigned)
   const orphanedDocs = (allDocuments ?? []).filter((d: any) => !d.sub_project_id)
@@ -197,6 +198,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
                           <Link href={`/projects/${slug}/documents/${doc.id}`} className="font-medium hover:underline" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-space-grotesk)' }}>
                             {doc.title ?? doc.file_name}
                           </Link>
+                          {doc.title && doc.title !== doc.file_name && (
+                            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-space-mono)' }}>{doc.file_name}</p>
+                          )}
                         </td>
                         <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                           {doc.document_date

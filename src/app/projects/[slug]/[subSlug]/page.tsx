@@ -74,7 +74,8 @@ export default async function SubProjectPage({ params }: { params: Promise<{ slu
     .eq('project_id', project.id)
     .eq('sub_project_id', subProject.id)
     .order('authority_tier', { ascending: true })
-    .order('document_date', { ascending: false })
+    .order('human_reviewed', { ascending: true })
+    .order('file_name', { ascending: true })
 
   const uploaderIds = [...new Set((documents ?? []).map((d: Document) => d.uploaded_by).filter(Boolean))] as string[]
   const uploaderEmails: Record<string, string> = {}
@@ -147,6 +148,9 @@ export default async function SubProjectPage({ params }: { params: Promise<{ slu
                         </Link>
                         {!doc.ai_processed && (
                           <span className="ml-2 text-xs px-1.5 py-0.5 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>Processing</span>
+                        )}
+                        {doc.title && doc.title !== doc.file_name && (
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-space-mono)' }}>{doc.file_name}</p>
                         )}
                       </td>
                       <td className="px-5 py-3 text-xs" style={{ color: 'var(--text-muted)' }}>

@@ -50,7 +50,7 @@ export async function PATCH(
   const body = await req.json()
 
   // Only allow updating safe fields via this route
-  const allowedFields = ['image_url']
+  const allowedFields = ['image_url', 'engagement_context']
   const update: Record<string, unknown> = {}
   for (const key of allowedFields) {
     if (key in body) update[key] = body[key]
