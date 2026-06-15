@@ -48,6 +48,7 @@ export async function PATCH(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
+  const role = await getUserRole(user.id)
 
   // Only allow updating safe fields via this route
   const allowedFields = ['image_url', 'engagement_context']
@@ -60,7 +61,15 @@ export async function PATCH(
     return NextResponse.json({ error: 'No valid fields' }, { status: 400 })
   }
 
-  const role = await getUserRole(user.id)
+  // Engagement context shapes AI-generated output, so only staff may set it
+  if ('engagement_context' in update) {
+    if (role === 'client') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const context = update.engagement_context
+    if (typeof context === 'string' && context.length > 20000) {
+      return NextResponse.json({ error: 'Engagement context must be under 20,000 characters' }, { status: 400 })
+    }
+  }
+
   const allowed = await requireProjectAccess(user.id, id, role)
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 

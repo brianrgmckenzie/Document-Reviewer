@@ -337,6 +337,7 @@ export default function ManuscriptClient({
                 value={engagementContext}
                 onChange={e => setEngagementContext(e.target.value)}
                 placeholder="e.g. paste the contract addendum, SOW, or describe what this engagement needs to produce..."
+                maxLength={20000}
                 className="dark-textarea w-full px-3 py-2 rounded-lg text-sm"
                 style={{ minHeight: '180px' }}
               />
