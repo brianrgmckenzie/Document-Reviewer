@@ -109,6 +109,16 @@ export interface SubProject {
   updated_at: string
 }
 
+export interface AdHocReport {
+  id: string
+  project_id: string
+  title: string
+  prompt: string
+  content: string
+  created_by: string | null
+  created_at: string
+}
+
 export interface DocumentConflict {
   id: string
   project_id: string

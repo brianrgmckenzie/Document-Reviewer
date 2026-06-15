@@ -270,13 +270,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
 
             <div className="flex gap-2 flex-wrap items-start">
               {isSuperAdmin && (
-                <>
-                  <Link href={`/projects/${slug}/manuscript`} className="dark-btn-outline px-4 py-2 text-sm font-medium rounded-lg transition-all" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Manuscript</Link>
-                  <DeleteProjectButton projectId={project.id} projectName={project.name} />
-                </>
+                <Link href={`/projects/${slug}/manuscript`} className="dark-btn-outline px-4 py-2 text-sm font-medium rounded-lg transition-all" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Manuscript</Link>
               )}
               {isStaff && (
-                <NewSubProjectButton projectId={project.id} projectSlug={slug} />
+                <>
+                  <Link href={`/projects/${slug}/reports`} className="dark-btn-outline px-4 py-2 text-sm font-medium rounded-lg transition-all" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Reports</Link>
+                  <NewSubProjectButton projectId={project.id} projectSlug={slug} />
+                </>
+              )}
+              {isSuperAdmin && (
+                <DeleteProjectButton projectId={project.id} projectName={project.name} />
               )}
             </div>
           </div>
