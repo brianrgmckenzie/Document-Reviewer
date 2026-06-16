@@ -88,7 +88,7 @@ Write in clear, professional prose. Use bullet points only in list sections (Chi
 
   const response = await client.messages.create({
     model: 'claude-opus-4-7',
-    max_tokens: 16000,
+    max_tokens: 32000,
     messages: [{ role: 'user', content: prompt }],
   })
 
