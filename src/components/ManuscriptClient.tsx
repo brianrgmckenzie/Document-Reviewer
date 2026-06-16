@@ -498,7 +498,7 @@ export default function ManuscriptClient({
         <div className="rounded-xl p-12 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent' }} />
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Synthesizing {processedCount} documents...</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>This takes 30–60 seconds</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{processedCount > 50 ? 'This takes 1–3 minutes for large projects' : 'This takes 30–90 seconds'}</p>
         </div>
       )}
 

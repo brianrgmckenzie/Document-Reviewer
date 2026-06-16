@@ -87,7 +87,7 @@ What documents or data are conspicuously absent? What questions remain unanswere
 Write in clear, professional prose. Use bullet points only in list sections (Chief Concerns, Gaps, Recommended Focus Areas). Narrative sections should be paragraphs. This should read like a thorough consultant briefing note, not a form.`
 
   const response = await client.messages.create({
-    model: 'claude-opus-4-7',
+    model: 'claude-sonnet-4-6',
     max_tokens: 32000,
     messages: [{ role: 'user', content: prompt }],
   })
