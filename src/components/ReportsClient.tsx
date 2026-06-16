@@ -16,6 +16,7 @@ export default function ReportsClient({ project, processedCount, initialReports 
   const [reports, setReports] = useState<AdHocReport[]>(initialReports)
   const [prompt, setPrompt] = useState('')
   const [generating, setGenerating] = useState(false)
+  const [streamingContent, setStreamingContent] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(initialReports[0]?.id ?? null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -24,6 +25,7 @@ export default function ReportsClient({ project, processedCount, initialReports 
     if (!prompt.trim()) return
     setGenerating(true)
     setError('')
+    setStreamingContent('')
 
     const response = await fetch(`/api/projects/${project.id}/reports`, {
       method: 'POST',
@@ -31,15 +33,35 @@ export default function ReportsClient({ project, processedCount, initialReports 
       body: JSON.stringify({ prompt }),
     })
 
-    if (response.ok) {
-      const { report } = await response.json()
-      setReports(r => [report, ...r])
-      setExpandedId(report.id)
-      setPrompt('')
-    } else {
+    if (!response.ok || !response.body) {
       const body = await response.json().catch(() => ({}))
       setError(body.error ?? 'Generation failed')
+      setGenerating(false)
+      setStreamingContent(null)
+      return
     }
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let accumulated = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      accumulated += decoder.decode(value, { stream: true })
+      setStreamingContent(accumulated)
+    }
+
+    // Fetch updated list now that the report is saved
+    const listRes = await fetch(`/api/projects/${project.id}/reports`)
+    if (listRes.ok) {
+      const { reports: updated } = await listRes.json()
+      setReports(updated)
+      setExpandedId(updated[0]?.id ?? null)
+    }
+
+    setStreamingContent(null)
+    setPrompt('')
     setGenerating(false)
   }
 
@@ -97,11 +119,23 @@ export default function ReportsClient({ project, processedCount, initialReports 
         </div>
       </div>
 
-      {generating && (
+      {/* Spinner — only before first content arrives */}
+      {generating && streamingContent === '' && (
         <div className="rounded-xl p-12 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent' }} />
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Generating report...</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>This takes 20-40 seconds</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{processedCount > 50 ? 'Large project — first content appears in ~15 seconds' : 'First content appears in a few seconds'}</p>
+        </div>
+      )}
+
+      {/* Streaming content while generating */}
+      {generating && streamingContent && (
+        <div className="dark-card rounded-xl p-10">
+          <ManuscriptRenderer text={streamingContent} />
+          <div className="flex items-center gap-2 mt-6 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: 'var(--blue)' }} />
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Writing...</span>
+          </div>
         </div>
       )}
 
