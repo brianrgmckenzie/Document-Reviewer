@@ -6,6 +6,15 @@ import ManuscriptRenderer from '@/components/ManuscriptRenderer'
 import { Copy, FileDown, Trash2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import type { AdHocReport } from '@/lib/types'
 
+function fmtK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }
+
+const PROMPT_TEMPLATES = [
+  { label: 'Document inventory', text: 'Produce a document inventory table with columns: Document Name, Type, Date, Source, and Status (Valid / Needs Update / Obsolete / Unknown). Include every processed document.' },
+  { label: 'Status memo', text: 'Draft a board-ready status memo summarizing the current state of this engagement based on the document review. Include key findings, open questions, and recommended next steps.' },
+  { label: 'Gap analysis', text: 'Identify the key gaps in the document record. For each gap, name what is missing, why it matters for the engagement, and what should be requested from the client.' },
+  { label: 'Key stakeholders', text: 'Compile a stakeholder summary listing all significant individuals and organizations named across the documents. For each, describe their role and relevance to the engagement.' },
+]
+
 interface Props {
   project: { id: string; client_name: string }
   processedCount: number
@@ -98,10 +107,22 @@ export default function ReportsClient({ project, processedCount, initialReports 
         <p className="text-sm mt-0.5 mb-3" style={{ color: 'var(--text-muted)' }}>
           Describe a document inventory, status memo, or other administrative report. Synthesizes {processedCount} processed document{processedCount !== 1 ? 's' : ''}.
         </p>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {PROMPT_TEMPLATES.map(t => (
+            <button
+              key={t.label}
+              onClick={() => setPrompt(t.text)}
+              className="text-xs px-2.5 py-1 rounded-lg"
+              style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
         <textarea
           value={prompt}
           onChange={e => setPrompt(e.target.value)}
-          placeholder="e.g. Produce a document inventory and gap analysis table with columns for Document type, Date, Source, and Status (Valid / Needs Update / Obsolete / Unknown)."
+          placeholder="Describe the report you need, or pick a template above."
           maxLength={4000}
           className="dark-textarea w-full px-3 py-2 rounded-lg text-sm"
           style={{ minHeight: '120px' }}
@@ -159,6 +180,7 @@ export default function ReportsClient({ project, processedCount, initialReports 
                     <h3 className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>{report.title}</h3>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                       {new Date(report.created_at).toLocaleString()}
+                      {report.token_usage && ` · ${fmtK(report.token_usage.input_tokens)} in / ${fmtK(report.token_usage.output_tokens)} out`}
                     </p>
                   </div>
                   {expanded ? <ChevronUp size={15} style={{ color: 'var(--text-muted)' }} className="shrink-0" /> : <ChevronDown size={15} style={{ color: 'var(--text-muted)' }} className="shrink-0" />}

@@ -12,6 +12,7 @@ interface Props {
   subProjectCount?: number
   initialManuscript: string | null
   manuscriptGeneratedAt: string | null
+  manuscriptTokenUsage?: { input_tokens: number; output_tokens: number } | null
   readOnly?: boolean
   isSuperAdmin?: boolean
   initialShareToken?: string | null
@@ -20,12 +21,15 @@ interface Props {
   initialEngagementContext?: string | null
 }
 
+function fmtK(n: number) { return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n) }
+
 export default function ManuscriptClient({
   project,
   processedCount,
   subProjectCount,
   initialManuscript,
   manuscriptGeneratedAt,
+  manuscriptTokenUsage,
   readOnly,
   isSuperAdmin,
   initialShareToken,
@@ -256,6 +260,9 @@ export default function ManuscriptClient({
               : `Synthesizes ${processedCount} document${processedCount !== 1 ? 's' : ''}${subProjectCount ? ` across ${subProjectCount} analysis phase${subProjectCount !== 1 ? 's' : ''}` : ''} into a consultant briefing`}
             {generatedAt && (
               <span style={{ color: 'var(--text-muted)' }}> · Last generated {new Date(generatedAt).toLocaleString()}</span>
+            )}
+            {manuscriptTokenUsage && (
+              <span style={{ color: 'var(--text-muted)' }}> · {fmtK(manuscriptTokenUsage.input_tokens)} in / {fmtK(manuscriptTokenUsage.output_tokens)} out</span>
             )}
           </p>
         </div>

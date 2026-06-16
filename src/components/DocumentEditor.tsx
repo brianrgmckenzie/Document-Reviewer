@@ -178,6 +178,11 @@ export default function DocumentEditor({
           ) : (
             <span className="text-xs px-2.5 py-1 rounded" style={{ background: 'var(--surface-3)', color: 'var(--text-muted)' }}>Processing…</span>
           )}
+          {(doc as any).ai_token_usage && (() => {
+            const u = (doc as any).ai_token_usage as { input_tokens: number; output_tokens: number }
+            const k = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}k` : String(n)
+            return <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k(u.input_tokens)} in / {k(u.output_tokens)} out</span>
+          })()}
           {doc.human_reviewed ? (
             <span className="text-xs px-2.5 py-1 rounded" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>Human Reviewed</span>
           ) : (

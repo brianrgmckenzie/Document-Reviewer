@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const assessment = await processDocument(content, doc.file_name)
+    const { assessment, usage } = await processDocument(content, doc.file_name)
 
     let documentDate: string | null = assessment.document_date
     if (documentDate) {
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
         flags: assessment.flags,
         ai_processed: true,
         ai_processed_at: new Date().toISOString(),
+        ai_token_usage: usage,
         ...(freshlyExtracted && typeof content === 'string' ? { extracted_text: content } : {}),
       })
       .eq('id', documentId)

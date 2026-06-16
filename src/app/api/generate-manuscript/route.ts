@@ -98,18 +98,27 @@ Write in clear, professional prose. Use bullet points only in list sections (Chi
           messages: [{ role: 'user', content: prompt }],
         })
 
+        let inputTokens = 0
+        let outputTokens = 0
         for await (const chunk of anthropicStream) {
-          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          if (chunk.type === 'message_start') {
+            inputTokens = chunk.message.usage.input_tokens
+          } else if (chunk.type === 'message_delta') {
+            outputTokens = chunk.usage.output_tokens
+          } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             fullText += chunk.delta.text
             controller.enqueue(encoder.encode(chunk.delta.text))
           }
         }
 
-        // Save once complete
         const admin = createAdminClient()
         await admin
           .from('projects')
-          .update({ manuscript: fullText, manuscript_generated_at: new Date().toISOString() })
+          .update({
+            manuscript: fullText,
+            manuscript_generated_at: new Date().toISOString(),
+            manuscript_token_usage: { input_tokens: inputTokens, output_tokens: outputTokens },
+          })
           .eq('id', projectId)
       } catch (err) {
         console.error('Manuscript stream error:', err)

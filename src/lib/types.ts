@@ -34,6 +34,11 @@ export type DocumentCategory = typeof DOCUMENT_CATEGORIES[number]
 export const SENTIMENT_OPTIONS = ['risk', 'commitment', 'aspiration', 'neutral'] as const
 export type Sentiment = typeof SENTIMENT_OPTIONS[number]
 
+export interface TokenUsage {
+  input_tokens: number
+  output_tokens: number
+}
+
 export interface Project {
   id: string
   name: string
@@ -48,6 +53,7 @@ export interface Project {
   image_url: string | null
   manuscript: string | null
   manuscript_generated_at: string | null
+  manuscript_token_usage: TokenUsage | null
   engagement_context: string | null
   craap_weights: Record<string, number> | null
   search_suppressed_words: string[] | null
@@ -91,6 +97,7 @@ export interface Document {
   extracted_text: string | null
   ai_processed: boolean
   ai_processed_at: string | null
+  ai_token_usage: TokenUsage | null
   human_reviewed: boolean
   human_reviewed_by: string | null
   human_reviewed_at: string | null
@@ -117,6 +124,7 @@ export interface AdHocReport {
   content: string
   created_by: string | null
   created_at: string
+  token_usage: TokenUsage | null
 }
 
 export interface DocumentConflict {

@@ -37,10 +37,15 @@ export interface AIDocumentAssessment {
   flags: string[]
 }
 
+export interface ProcessDocumentResult {
+  assessment: AIDocumentAssessment
+  usage: { input_tokens: number; output_tokens: number }
+}
+
 export async function processDocument(
   content: string | Buffer,
   fileName: string
-): Promise<AIDocumentAssessment> {
+): Promise<ProcessDocumentResult> {
   const isPdf = Buffer.isBuffer(content)
 
   const promptText = `You are a senior impact consultant at Reframe Concepts — a firm that works with faith-based organizations, nonprofits, and land-owning for-profits to achieve long-term sustainability, governance, and community impact.
@@ -184,7 +189,10 @@ Return ONLY valid JSON. No explanation, no markdown, just the JSON object.`
   const cleaned = raw.replace(/\/\/[^\n]*/g, '')
 
   try {
-    return JSON.parse(cleaned) as AIDocumentAssessment
+    return {
+      assessment: JSON.parse(cleaned) as AIDocumentAssessment,
+      usage: { input_tokens: response.usage.input_tokens, output_tokens: response.usage.output_tokens },
+    }
   } catch {
     throw new Error('Failed to parse AI assessment response')
   }

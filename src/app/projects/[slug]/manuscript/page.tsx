@@ -55,6 +55,7 @@ export default async function ManuscriptPage({ params }: { params: Promise<{ slu
           subProjectCount={subProjectCount}
           initialManuscript={project.manuscript ?? null}
           manuscriptGeneratedAt={project.manuscript_generated_at ?? null}
+          manuscriptTokenUsage={project.manuscript_token_usage ?? null}
           readOnly={isClient}
           isSuperAdmin={isSuperAdmin && !isImpersonating}
           initialShareToken={project.share_token ?? null}

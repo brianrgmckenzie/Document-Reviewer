@@ -13,8 +13,51 @@ function renderInline(text: string): React.ReactNode {
 function renderManuscript(text: string) {
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
+  let i = 0
 
-  lines.forEach((line, i) => {
+  const isSep = (l: string) => /^\|[\s\-:|]+\|/.test(l.trim())
+  const parseRow = (l: string): string[] => l.split('|').slice(1, -1).map(c => c.trim())
+
+  while (i < lines.length) {
+    const line = lines[i]
+
+    if (line.trimStart().startsWith('|')) {
+      const tableLines: string[] = []
+      while (i < lines.length && lines[i].trimStart().startsWith('|')) {
+        tableLines.push(lines[i])
+        i++
+      }
+      const headers = parseRow(tableLines[0])
+      const dataRows = tableLines.slice(1).filter(l => !isSep(l)).map(parseRow)
+      elements.push(
+        <div key={`t-${i}`} style={{ overflowX: 'auto', margin: '16px 0' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+            <thead>
+              <tr>
+                {headers.map((h, j) => (
+                  <th key={j} style={{ textAlign: 'left', padding: '8px 12px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap' }}>
+                    {renderInline(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, ri) => (
+                <tr key={ri} style={{ borderBottom: '1px solid var(--border)' }}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} style={{ padding: '8px 12px', color: 'var(--text-secondary)', verticalAlign: 'top' }}>
+                      {renderInline(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+      continue
+    }
+
     if (line.startsWith('# ')) {
       elements.push(<h1 key={i} className="text-2xl font-bold mb-6 pb-4" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border)' }}>{renderInline(line.slice(2))}</h1>)
     } else if (line.startsWith('## ')) {
@@ -44,7 +87,8 @@ function renderManuscript(text: string) {
     } else {
       elements.push(<p key={i} className="leading-relaxed mb-1" style={{ color: 'var(--text-secondary)' }}>{renderInline(line)}</p>)
     }
-  })
+    i++
+  }
 
   return elements
 }
