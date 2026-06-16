@@ -82,15 +82,15 @@ export async function buildProjectDocumentContext(projectId: string): Promise<Pr
     _weightedScore: computeWeightedPARCA(doc, weights),
   }))
 
-  // Update weighted totals in DB so document cards reflect current weights
-  await Promise.all(
+  // Update weighted totals in DB — fire and forget so we don't block the Claude call
+  Promise.all(
     scored.map(doc =>
       admin
         .from('documents')
         .update({ craap_weighted_total: doc._weightedScore })
         .eq('id', doc.id)
     )
-  )
+  ).catch(() => {})
 
   function buildDocSummary(doc: any): string {
     const rawTotal = doc.craap_total ?? (PARCA_KEYS.reduce((s: number, k: string) => s + (doc[`craap_${k}`] ?? 5), 0))

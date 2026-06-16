@@ -86,22 +86,44 @@ What documents or data are conspicuously absent? What questions remain unanswere
 
 Write in clear, professional prose. Use bullet points only in list sections (Chief Concerns, Gaps, Recommended Focus Areas). Narrative sections should be paragraphs. This should read like a thorough consultant briefing note, not a form.`
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 32000,
-    messages: [{ role: 'user', content: prompt }],
+  const encoder = new TextEncoder()
+  let fullText = ''
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const anthropicStream = client.messages.stream({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 32000,
+          messages: [{ role: 'user', content: prompt }],
+        })
+
+        for await (const chunk of anthropicStream) {
+          if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+            fullText += chunk.delta.text
+            controller.enqueue(encoder.encode(chunk.delta.text))
+          }
+        }
+
+        // Save once complete
+        const admin = createAdminClient()
+        await admin
+          .from('projects')
+          .update({ manuscript: fullText, manuscript_generated_at: new Date().toISOString() })
+          .eq('id', projectId)
+      } catch (err) {
+        console.error('Manuscript stream error:', err)
+      } finally {
+        controller.close()
+      }
+    },
   })
 
-  const manuscript = response.content[0].type === 'text' ? response.content[0].text : ''
-
-  const admin = createAdminClient()
-  await admin
-    .from('projects')
-    .update({
-      manuscript,
-      manuscript_generated_at: new Date().toISOString(),
-    })
-    .eq('id', projectId)
-
-  return NextResponse.json({ success: true, manuscript })
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+    },
+  })
 }

@@ -97,6 +97,7 @@ export default function ManuscriptClient({
     setShowConfirm(false)
     setGenerating(true)
     setError('')
+    setManuscript(null)
 
     const response = await fetch('/api/generate-manuscript', {
       method: 'POST',
@@ -104,17 +105,27 @@ export default function ManuscriptClient({
       body: JSON.stringify({ projectId: project.id }),
     })
 
-    if (response.ok) {
-      const { manuscript: newManuscript } = await response.json()
-      setManuscript(newManuscript)
-      setGeneratedAt(new Date().toISOString())
-      router.refresh()
-    } else {
-      const { error: err } = await response.json()
-      setError(err ?? 'Generation failed')
+    if (!response.ok || !response.body) {
+      const body = await response.json().catch(() => ({}))
+      setError(body.error ?? 'Generation failed')
+      setGenerating(false)
+      return
     }
 
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let accumulated = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      accumulated += decoder.decode(value, { stream: true })
+      setManuscript(accumulated)
+    }
+
+    setGeneratedAt(new Date().toISOString())
     setGenerating(false)
+    router.refresh()
   }
 
   function handleCopy() {
@@ -494,17 +505,17 @@ export default function ManuscriptClient({
         </div>
       )}
 
-      {generating && (
+      {generating && !manuscript && (
         <div className="rounded-xl p-12 text-center" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="inline-block w-6 h-6 border-2 border-t-transparent rounded-full animate-spin mb-4" style={{ borderColor: 'var(--blue)', borderTopColor: 'transparent' }} />
           <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Synthesizing {processedCount} documents...</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{processedCount > 50 ? 'This takes 1–3 minutes for large projects' : 'This takes 30–90 seconds'}</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{processedCount > 50 ? 'Large project — first words appear in ~15 seconds' : 'First words appear in a few seconds'}</p>
         </div>
       )}
 
-      {manuscript && !generating && (
+      {manuscript && (
         <div className="dark-card rounded-xl p-10">
-          {view === 'rendered' || readOnly ? (
+          {view === 'rendered' || readOnly || generating ? (
             <ManuscriptRenderer text={manuscript} />
           ) : (
             <textarea
@@ -513,6 +524,12 @@ export default function ManuscriptClient({
               className="w-full h-[70vh] font-mono text-sm border-0 outline-none resize-none"
               style={{ background: 'transparent', color: 'var(--text-secondary)' }}
             />
+          )}
+          {generating && (
+            <div className="flex items-center gap-2 mt-6 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+              <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: 'var(--blue)' }} />
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Writing...</span>
+            </div>
           )}
         </div>
       )}
